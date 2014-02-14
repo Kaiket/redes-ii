@@ -3,13 +3,17 @@
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <syslog.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <string.h>
 #include <errno.h>
 #include <netinet/in.h>
-#include <G-1301-03-P1-connection.h>
-#include <G-1301-03-P1-types.h>
+#include <inttypes.h>
+#include <pthread.h>
+#include "G-1301-03-P1-connection.h"
+#include "G-1301-03-P1-types.h"
 
 /*HIGH LEVEL FUNCTIONS (public)*/
 
@@ -37,10 +41,14 @@ int init_server (int port, int max_connections) {
     }
     
     syslog(LOG_NOTICE, "Setting connections queue length to %d", max_connections);
-    closelog();
-    if ((ret=set_queue_length(fd, max_connections))!=OK) {
-        if (ret==ERROR_Q_LENGTH) syslog(LOG_ERR, "Error setting queue length: Invalid queue length (<1)");
-        else syslog(LOG_ERR, "Error setting queue length: %s", strerror(errno));
+    ret=set_queue_length(fd, max_connections);
+    if (ret!=OK) {
+        if (ret == ERROR_Q_LENGTH) {
+            syslog(LOG_ERR, "Error setting queue length: Invalid queue length (<1)");
+        }
+        else {
+            syslog(LOG_ERR, "Error setting queue length: %s", strerror(errno));
+        }
         return ret;
     }
     
@@ -53,11 +61,12 @@ conexión no se ha realizado.
 */
 int accept_connections (int socket) {
     struct sockaddr_in client;
-    int client_sock, addrsize;
+    int client_sock, addrsize, *sock_arg=NULL;
     char IP_char[16];
-    u_int8t *client_IP;
+    u_int8_t *client_IP;
+    pthread_t thread;
     
-    adddrsize=sizeof(client);
+    addrsize=sizeof(client);
     
     syslog(LOG_NOTICE, "Server waiting for a new connection.");
     client_sock=accept(socket, (struct sockaddr *)&client, &addrsize);
@@ -67,9 +76,16 @@ int accept_connections (int socket) {
     }
     
     client_IP=(uint8_t*)&(client.sin_addr.s_addr);
-    sprintf(IP_char, "%"SCNu8".%"SCNu8".%"SCNu8".%"SCNu8, IP[0], IP[1], IP[2], IP[3]);
+    sprintf(IP_char, "%"SCNu8".%"SCNu8".%"SCNu8".%"SCNu8, client_IP[0], client_IP[1], client_IP[2], client_IP[3]);
     syslog(LOG_NOTICE, "Connection from %s in socket %d", IP_char, client_sock);
     syslog(LOG_NOTICE, "Creating a thread to handle connection in socket %d", client_sock);
+    sock_arg=(int*)malloc(sizeof(int));
+    *sock_arg=client_sock;
+    if (pthread_create(&thread, NULL, thread_routine, (void *)sock_arg) < 0) {
+        syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);
+        return ERROR;
+    }
+    return client_sock;
     
 }
 
@@ -120,8 +136,8 @@ int bind_socket (int socket, int port) {
 
     sa.sin_family=AF_INET;
     sa.sin_port=htons(port);
-    sa.sin_addr=htonl(INADDR_ANY);
-    sa.sin_zero=bzero(8);
+    sa.sin_addr.s_addr=INADDR_ANY;
+    bzero((void*)&(sa.sin_zero),8);
 
     return bind(socket, (struct sockaddr *)&sa, sizeof(struct sockaddr));
 }
@@ -133,4 +149,21 @@ longitud de la cola. Devolverá un código de error.
 int set_queue_length (int socket, int length) {
     if (length<1) return ERROR_Q_LENGTH;
     return listen(socket, length);
+}
+
+/*
+ * Thread routine
+ */
+void *thread_routine (void *arg) {
+    int socket=*((int *)arg);
+    /*Testing routine*/
+    char *client_message[2000];
+    int read_size;
+    syslog(LOG_NOTICE, "New thread created for socket %d\n", socket);
+    while ((read_size = recv(socket , client_message , 2000 , 0))>0) {
+        send(socket, client_message, read_size, 0);
+        syslog(LOG_NOTICE,"Message received in socket %d\n", socket);
+    }
+    free(arg);
+    pthread_exit(NULL);
 }
