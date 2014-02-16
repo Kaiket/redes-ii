@@ -187,6 +187,5 @@ int daemonizer(const char *ident){
     }
     
     syslog(LOG_NOTICE, "Daemon initialized correctly.\n");
-    
     return OK;
 }

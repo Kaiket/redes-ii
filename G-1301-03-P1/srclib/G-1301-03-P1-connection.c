@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <linux/tcp.h>
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-types.h"
 
@@ -102,7 +103,13 @@ La función que envíe los datos tendrá como parámetros un puntero a los datos
 y la longitud en bytes a enviar. Devolverá la longitud en bytes enviada o un código de error (negativo). Enviará
 los datos en paquetes del tamaño máximo de un segmento salvo el último que sólo enviará los datos restantes.
 */
-int send_msg (int socket, void *data, int length) {
+int send_msg (int socket, void *data, size_t length, size_t segmentsize) {
+    
+    ssize_t sended;
+    
+    if((sended = send(socket, data, )) == -1){
+        syslog(LOG_ERR, "Failed while sending msg", strerror(errno));
+    }
     return OK;
 }
 
