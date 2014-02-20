@@ -1,6 +1,6 @@
 /*
  * TCP socket creation, port binding, and send/receive functions
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,77 +24,76 @@
  *      Initializes a server opening a TCP socket, binding his address to the specified port (argument), 
  *      and setting the queue length to max_connections (argument).
  *      Returns the socket descriptor or an error code and writes a message in the system log describing such error.
-*/
-int init_server (int port, int max_connections) {
+ */
+int init_server(int port, int max_connections) {
     int fd, ret;
-    
+
     syslog(LOG_NOTICE, "Creating a new TCP socket");
-    fd=open_TCP_socket();
-    if (fd<=0) {
+    fd = open_TCP_socket();
+    if (fd <= 0) {
         syslog(LOG_ERR, "Error creating a new TCP socket: %s", strerror(errno));
         return ERROR;
     }
-    
+
     syslog(LOG_NOTICE, "Binding port %d to TCP socket", port);
-    if (bind_socket(fd, port)!=OK) {
+    if (bind_socket(fd, port) != OK) {
         syslog(LOG_ERR, "Error binding port %d to TCP socket: %s", port, strerror(errno));
         return ERROR;
     }
-    
+
     syslog(LOG_NOTICE, "Setting connections queue length to %d", max_connections);
-    ret=set_queue_length(fd, max_connections);
-    if (ret!=OK) {
+    ret = set_queue_length(fd, max_connections);
+    if (ret != OK) {
         if (ret == ERROR_Q_LENGTH) {
             syslog(LOG_ERR, "Error setting queue length: Invalid queue length (<1)");
-        }
-        else {
+        } else {
             syslog(LOG_ERR, "Error setting queue length: %s", strerror(errno));
         }
         return ret;
     }
-    
+
     return fd;
-    
+
 }
 
 /*Función que pondrá al servidor a “escuchar” peticiones de conexión. Devolverá un código de error si la
 conexión no se ha realizado.
-*/
-int accept_connections (int socket) {
+ */
+int accept_connections(int socket) {
     struct sockaddr_in client;
-    int client_sock, addrsize, *sock_arg=NULL;
+    int client_sock, addrsize, *sock_arg = NULL;
     char IP_char[16];
     u_int8_t *client_IP;
     pthread_t thread;
-    
-    addrsize=sizeof(client);
-    
+
+    addrsize = sizeof (client);
+
     syslog(LOG_NOTICE, "Server waiting for a new connection.");
-    client_sock=accept(socket, (struct sockaddr *)&client, &addrsize);
-    if (client_sock<0) {
+    client_sock = accept(socket, (struct sockaddr *) &client, &addrsize);
+    if (client_sock < 0) {
         syslog(LOG_ERR, "Error accepting a connection: %s", strerror(errno));
         return ERROR;
     }
-    
-    client_IP=(uint8_t*)&(client.sin_addr.s_addr);
+
+    client_IP = (uint8_t*)&(client.sin_addr.s_addr);
     sprintf(IP_char, "%"SCNu8".%"SCNu8".%"SCNu8".%"SCNu8, client_IP[0], client_IP[1], client_IP[2], client_IP[3]);
     syslog(LOG_NOTICE, "Connection from %s in socket %d", IP_char, client_sock);
     syslog(LOG_NOTICE, "Creating a thread to handle connection in socket %d", client_sock);
-    sock_arg=(int*)malloc(sizeof(int));
-    *sock_arg=client_sock;
-    if (pthread_create(&thread, NULL, thread_routine, (void *)sock_arg) < 0) {
+    sock_arg = (int*) malloc(sizeof (int));
+    *sock_arg = client_sock;
+    if (pthread_create(&thread, NULL, thread_routine, (void *) sock_arg) < 0) {
         syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);
         return ERROR;
     }
     return client_sock;
-    
+
 }
 
 /*Función que cierra la comunicación. Tendrá como parámetro el handler de la conexión a cerrar y devolverá
 un código de error.
-*/
+ */
 
-int close_connection (int socket) {
+int close_connection(int socket) {
     return close(socket);
 }
 
@@ -102,14 +101,30 @@ int close_connection (int socket) {
 La función que envíe los datos tendrá como parámetros un puntero a los datos (que será de tipo void *)
 y la longitud en bytes a enviar. Devolverá la longitud en bytes enviada o un código de error (negativo). Enviará
 los datos en paquetes del tamaño máximo de un segmento salvo el último que sólo enviará los datos restantes.
-*/
-int send_msg (int socket, void *data, size_t length, size_t segmentsize) {
-    
-    ssize_t sended;
-    
-    if((sended = send(socket, data, )) == -1){
-        syslog(LOG_ERR, "Failed while sending msg", strerror(errno));
+ */
+int send_msg(int socket, void *data, size_t length, size_t segmentsize) {
+
+    int sended = 0;
+
+    while (length) {
+
+        if (length <= segmentsize) {
+            if (send(socket, data, length, 0) != length) {
+                syslog(LOG_ERR, "Failed while sending msg. %s", strerror(errno));
+                return ERROR;
+            }
+            sended += length;
+            return sended;
+        }
+
+        if (send(socket, data, segmentsize, 0) != segmentsize) {
+            syslog(LOG_ERR, "Failed while sending msg. %s", strerror(errno));
+            return ERROR;
+        }
+        sended += segmentsize;
+        length -= segmentsize;
     }
+    
     return OK;
 }
 
@@ -118,9 +133,40 @@ La función que recibe los datos tendrá como parámetro un puntero a un puntero
 de tipo void **). Devolverá la longitud en bytes recibida o un código de error (negativo). Esta función hará sitio
 en la memoria para un buffer del tamaño adecuado a esa longitud (cuidado con la terminación de cadena
 de caracteres) y rellenará el buffer con los datos. 
-*/
-int receive_msg (int socket, void **data) {
-    return OK;
+Será necesario liberar el buffer tras su llamada.
+ */
+int receive_msg(int socket, void **data, size_t segmentsize, char* endchar, int n_endchar) {
+
+    int received = 0;
+    short finished_flag = 0;
+    ssize_t length;
+
+    if (segmentsize <= 0) {
+        segmentsize = TCP_MSS_DEFAULT;
+    }
+
+    while (!finished_flag) {
+
+        *data = realloc(*data, received + segmentsize);
+        if (!(*data)) {
+            syslog(LOG_ERR, "Failed while allocating memory. %s", strerror(errno));
+            return ERROR;
+        }
+
+        if ((length = recv(socket, *data, segmentsize, 0)) == -1) {
+            syslog(LOG_ERR, "Failed while allocating memory. %s", strerror(errno));
+            return ERROR;
+        }
+
+        received += length;
+
+        if (received < segmentsize || !strncmp(*data[length - n_endchar], endchar, n_endchar)) {
+            finished_flag = 1;
+        }
+
+    }
+
+    return received;
 }
 
 
@@ -128,48 +174,47 @@ int receive_msg (int socket, void **data) {
 
 /*Función que abre un socket de servidor TCP. No tiene parámetros. Devolverá un código de error o el handler
 del socket según corresponda.*/
-int open_TCP_socket () {
+int open_TCP_socket() {
     int fd;
-    fd=socket(AF_INET, SOCK_STREAM, 0);
-    if (fd>=0) return fd;
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd >= 0) return fd;
     return ERROR;
 }
 
 /* Función que asigna un puerto al socket. Tendrá dos parámetros que serán el handler del socket y el número
 de puerto. Devolverá un código de error.
-*/
-int bind_socket (int socket, int port) {
+ */
+int bind_socket(int socket, int port) {
     struct sockaddr_in sa;
 
-    sa.sin_family=AF_INET;
-    sa.sin_port=htons(port);
-    sa.sin_addr.s_addr=INADDR_ANY;
-    bzero((void*)&(sa.sin_zero),8);
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons(port);
+    sa.sin_addr.s_addr = INADDR_ANY;
+    bzero((void*) &(sa.sin_zero), 8);
 
-    return bind(socket, (struct sockaddr *)&sa, sizeof(struct sockaddr));
+    return bind(socket, (struct sockaddr *) &sa, sizeof (struct sockaddr));
 }
-
 
 /*Función que determina la longitud de la cola. Tendrá dos parámetros que serán el handler del socket y la
 longitud de la cola. Devolverá un código de error.
-*/
-int set_queue_length (int socket, int length) {
-    if (length<1) return ERROR_Q_LENGTH;
+ */
+int set_queue_length(int socket, int length) {
+    if (length < 1) return ERROR_Q_LENGTH;
     return listen(socket, length);
 }
 
 /*
  * Thread routine
  */
-void *thread_routine (void *arg) {
-    int socket=*((int *)arg);
+void *thread_routine(void *arg) {
+    int socket = *((int *) arg);
     /*Testing routine*/
     char *client_message[2000];
     int read_size;
     syslog(LOG_NOTICE, "New thread created for socket %d\n", socket);
-    while ((read_size = recv(socket , client_message , 2000 , 0))>0) {
+    while ((read_size = recv(socket, client_message, 2000, 0)) > 0) {
         send(socket, client_message, read_size, 0);
-        syslog(LOG_NOTICE,"Message received in socket %d\n", socket);
+        syslog(LOG_NOTICE, "Message received in socket %d\n", socket);
     }
     free(arg);
     pthread_exit(NULL);
