@@ -16,8 +16,8 @@
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-types.h"
 
-Thread_handler* threads=NULL;
-int max_threads=0;
+Thread_handler* threads = NULL;
+int max_threads = 0;
 
 /*HIGH LEVEL FUNCTIONS (public)*/
 
@@ -87,7 +87,7 @@ int accept_connections(int socket) {
 pthread_t launch_thread(int client_sock) {
     int *sock_arg;
     pthread_t thread;
-    
+
     syslog(LOG_NOTICE, "Creating a thread to handle connection in socket %d", client_sock);
     sock_arg = (int*) malloc(sizeof (int));
     *sock_arg = client_sock;
@@ -95,11 +95,11 @@ pthread_t launch_thread(int client_sock) {
         syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);
         return ERROR;
     }
-    
-    if (thread>max_threads) {
-        
+
+    if (thread > max_threads) {
+
     }
-    
+
     return thread;
 }
 
@@ -138,7 +138,7 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize) {
         sended += segmentsize;
         length -= segmentsize;
     }
-    
+
     return OK;
 }
 

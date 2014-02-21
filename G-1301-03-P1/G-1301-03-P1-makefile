@@ -1,0 +1,25 @@
+
+# Macros
+CC = gcc
+CFLAGS = -ansi -pedantic -Wall -Wextra -g
+
+#Directories
+SRC_DIR = src
+SRCLIB_DIR = scrlib
+INCLUDES_DIR = includes
+LIB_DIR = lib
+OBJ_DIR = obj
+
+#Macros
+SRCLIB = $(SRCLIB_DIR)/%.c
+SRC = $(SRC_DIR)/%.c
+
+OBJLIB = $(subst .c,.o, $(SRCLIB))
+
+
+all: 
+
+all: 
+$(OBJLIB)/%.o : S(SRCLIB)/%.c
+	$(CC) $(FLAGSS) -c $< -o 
+
