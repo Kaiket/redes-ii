@@ -1,4 +1,8 @@
 
+typedef struct {
+int socket;
+char active;
+} Thread_handler;
 
 int init_server (int port, int max_connections);
 

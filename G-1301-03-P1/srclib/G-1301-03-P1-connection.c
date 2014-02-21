@@ -16,6 +16,9 @@
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-types.h"
 
+Thread_handler* threads=NULL;
+int max_threads=0;
+
 /*HIGH LEVEL FUNCTIONS (public)*/
 
 /*
@@ -78,6 +81,13 @@ int accept_connections(int socket) {
     client_IP = (uint8_t*)&(client.sin_addr.s_addr);
     sprintf(IP_char, "%"SCNu8".%"SCNu8".%"SCNu8".%"SCNu8, client_IP[0], client_IP[1], client_IP[2], client_IP[3]);
     syslog(LOG_NOTICE, "Connection from %s in socket %d", IP_char, client_sock);
+    return client_sock;
+}
+
+pthread_t launch_thread(int client_sock) {
+    int *sock_arg;
+    pthread_t thread;
+    
     syslog(LOG_NOTICE, "Creating a thread to handle connection in socket %d", client_sock);
     sock_arg = (int*) malloc(sizeof (int));
     *sock_arg = client_sock;
@@ -85,8 +95,12 @@ int accept_connections(int socket) {
         syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);
         return ERROR;
     }
-    return client_sock;
-
+    
+    if (thread>max_threads) {
+        
+    }
+    
+    return thread;
 }
 
 /*Función que cierra la comunicación. Tendrá como parámetro el handler de la conexión a cerrar y devolverá
