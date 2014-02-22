@@ -5,7 +5,8 @@
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include "../includes/G-1301-03-P1-daemonizer.h"
+#include "../includes/G-1301-03-P1-types.h"
 
 /*
  * Private function

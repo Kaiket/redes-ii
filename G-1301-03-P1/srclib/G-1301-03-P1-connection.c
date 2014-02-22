@@ -13,8 +13,8 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <linux/tcp.h>
-#include "G-1301-03-P1-connection.h"
-#include "G-1301-03-P1-types.h"
+#include "../includes/G-1301-03-P1-connection.h"
+#include "../includes/G-1301-03-P1-types.h"
 
 Thread_handler* threads = NULL;
 int max_threads = 0;

@@ -29,5 +29,5 @@ all: $(OBJ) $(OBJLIB)
 $(OBJLIB): $(SRCLIB) $(HEADERLIB) $(HEADEREXTRA)
 	$(CC) $(CFLAGS) -c $(SRCLIB) -o $(OBJ_DIR)/$@
 
-$(OBJ): $(SRC) $(HEADERLIB) $(HEADEREXTRA)
+$(OBJ): $(SRC) $(HEADERLIB)
 	$(CC) $(CFLAGS) -c $(SRC) -o $(OBJ_DIR)/$@
