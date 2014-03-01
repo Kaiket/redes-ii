@@ -1,6 +1,6 @@
 # Macros
 CC := gcc
-CFLAGS := -ansi -pedantic -Wall -Wextra
+CFLAGS := 
 LIBS := -lpthread
 
 # Directories
@@ -10,55 +10,51 @@ OBJ_DIR := obj
 HEADER_DIR := includes
 LIB_DIR := lib
 
-# Sources, objects, headers, tests, names.
+# Sources, objects, headers, names.
 SRC = $(wildcard $(SRC_DIR)/*.c)
 SRCLIB = $(wildcard $(SRCLIB_DIR)/*.c)
 
-OBJ = $(patsubst $(SRC_DIR)/%.c,%.o,$(SRC))
-OBJLIB = $(patsubst $(SRCLIB_DIR)/%.c,%.o,$(SRCLIB))
+OBJ = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC))
+OBJLIB = $(patsubst $(SRCLIB_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCLIB))
 
-HEADER = $(patsubst $(SRC_DIR)/%.c,$(HEADER_DIR)/%.h,$(SRC))
 HEADERLIB = $(patsubst $(SRCLIB_DIR)/%.c,$(HEADER_DIR)/%.h,$(SRCLIB))
-HEADER_ALL := $(HEADER_DIR)/G-1301-03-P1-types.h
+HEADER_ALL = $(HEADER_DIR)/G-1301-03-P1-types.h
 
-SRCTESTS = $(wildcard $(SRC_DIR)/*_test.c)
-OBJTESTS = $(patsubst $(SRC_DIR)/%_test.c,%.o,$(SRCTESTS))
-EXETESTS = $(patsubst $(SRC_DIR)/%.c,%,$(SRCTESTS))
-
-LIB_NAME := G-1301-03-P1-libnetworks.a
-TGZ_NAME := ../G-1301-03-P1.tgz
 DIR_NAME := ../G-1301-03-P1
+TGZ_NAME := ../G-1301-03-P1.tgz
+LIB_NAME := G-1301-03-P1-libnetworks.a
+
+BINARIES = $(patsubst $(OBJ_DIR)/%.o,%,$(OBJ))
 
 # Targets 
-$(OBJ): $(SRC) $(HEADER) $(HEADER_ALL)
-	$(CC) $(CFLAGS) -c $(patsubst %.o, $(SRC_DIR)/%.c, $@) -o $(OBJ_DIR)/$@ $(LIBS)
+$(BINARIES): $(OBJ) $(OBJLIB)
+	$(CC) $(CFLAGS) $(patsubst %, $(OBJ_DIR)/%.o, $@) $(OBJLIB) -o $@ $(LIBS)
+
+$(OBJ): $(SRC) $(HEADERLIB) $(HEADER_ALL)
+	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@ $(LIBS)
 
 $(OBJLIB): $(SRCLIB) $(HEADERLIB) $(HEADER_ALL)
-	$(CC) $(CFLAGS) -c $(patsubst %.o, $(SRCLIB_DIR)/%.c, $@) -o $(OBJ_DIR)/$@ $(LIBS)
+	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRCLIB_DIR)/%.c, $@) -o $@ $(LIBS)
 
-# Tests
-$(OBJTESTS): $(SRCTESTS) $(HEADER) $(HEADERLIB) $(HEADER_ALL)
-	$(CC) $(CFLAGS) $(EXETESTS) -o $@ $(LIBS)
+
 
 # Library
 $(LIB_NAME): $(OBJLIB)
-	ar -rv $@ S^
+	ar -rv $(LIB_DIR)/$@ S^
 
 # PHONY calls
 .PHONY: all clean compress
 
-all: $(OBJ) $(OBJLIB)
+all: $(OBJLIB) $(OBJ)
 	$(CC) $(CFLAGS) $^ -o $(OBJ_DIR)/$@ $(LIBS)
 
 compress: clean
 	tar -czvf $(TGZ_NAME) $(DIR_NAME)
 
 clean:
-	# Executables
-	rm $(EXETESTS)
-	# Objects
-	rm $(OBJ)
-	rm $(OBJLIB)
-	# TGZ
-	rm $(TGZ_NAME)
-	
+	rm -f $(wildcard *_test)
+	rm -f $(wildcard $(OBJ_DIR)/*.o)
+	rm -f $(TGZ_NAME)
+
+echo:
+	@echo $(HEADERLIB)

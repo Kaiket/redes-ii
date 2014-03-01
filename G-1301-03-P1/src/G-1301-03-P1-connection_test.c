@@ -1,5 +1,3 @@
-/*connection.c test*/
-
 #include <stdio.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -11,10 +9,17 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include "../srclib/G-1301-03-P1-connection.h"
+#include "../includes/G-1301-03-P1-types.h"
+#include "../includes/G-1301-03-P1-connection.h"
 
-void main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
+
     int socket, client_socket;
+    
+    if(argc != 2){
+        printf("Error de argumentos.\nUso:\n\t %s num_puerto\n", argv[0]);
+        return ERROR;
+    }
     
     openlog("connectionTest", LOG_PID, LOG_LOCAL0);
     
@@ -34,5 +39,7 @@ void main(int argc, char* argv[]) {
         printf("Socket: %d\nClient Socket: %d\n", socket, client_socket);
         fflush(stdout);
     }
+    
+    return OK;
     
 }

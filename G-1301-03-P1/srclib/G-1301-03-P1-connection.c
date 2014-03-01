@@ -72,7 +72,7 @@ int accept_connections(int socket) {
     addrsize = sizeof (client);
 
     syslog(LOG_NOTICE, "Server waiting for a new connection.");
-    client_sock = accept(socket, (struct sockaddr *) &client, &addrsize);
+    client_sock = accept(socket, (struct sockaddr*) &client, &addrsize);
     if (client_sock < 0) {
         syslog(LOG_ERR, "Error accepting a connection: %s", strerror(errno));
         return ERROR;
@@ -174,7 +174,7 @@ int receive_msg(int socket, void **data, size_t segmentsize, char* endchar, int 
 
         received += length;
 
-        if (received < segmentsize || !strncmp(*data[length - n_endchar], endchar, n_endchar)) {
+        if (received < segmentsize || !strncmp(data[length - n_endchar], endchar, n_endchar)) {
             finished_flag = 1;
         }
 

@@ -10,7 +10,7 @@ enum {
     TOTAL
 } command;
 
-char commands{"cmd1", "cmd2", "cmd3", "cmd4"};
+char *commands[4]={"cmd1", "cmd2", "cmd3", "cmd4"};
 
 int parser(int total, char* strings[], char* msg) {
     int i;
@@ -33,5 +33,6 @@ int exec_cmd (int number) {
         case 4:
             break;
         default:
+            break;
     }
 }
