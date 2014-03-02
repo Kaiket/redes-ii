@@ -27,6 +27,13 @@ En caso de éxito, la función
 devuelve 0. En caso de error -1 es devuelto y se registra el error en el sistema de log utilizando como identificador
 .IR ident .
 
+.SH TESTS
+Para probar la funcionalidad de la función se ha realizado el programa
+.BR G-1301-03-P1-daemonize_test
+que lanza un proceso, lo ejecuta en modo background y se pausa a la espera de recibir una señal que acabe con su ejecución.
+
+Este programa muestra el PID y PPID del proceso. Se puede comprobar que es posible cerrar la terminal y el proceso seguirá ejecutandose hasta recibir cualquiera de las señales SIGCHLD o SIGPWR, en cuyo caso registrará en el log correspondiente una respuesta a este hecho.
+
 .SH SEE ALSO
 daemon(2)
 .SH AUTHOR

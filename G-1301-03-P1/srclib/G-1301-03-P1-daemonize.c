@@ -19,7 +19,7 @@
  */
 void daemon_exit_handler(int signal){
     
-    syslog(LOG_NOTICE, "Received signal %d. Closing log file. Killing daemon.", signal);
+    syslog(LOG_NOTICE, "Server: Received signal %d. Closing log file. Killing daemon.", signal);
     closelog();
     exit(EXIT_SUCCESS);
 }
@@ -136,32 +136,32 @@ int daemonize(const char *ident){
     
     /*Initializing logs*/
     openlog(ident, LOG_PID, LOG_DAEMON);
-    syslog(LOG_NOTICE, "Initializing daemon.\n");
+    syslog(LOG_NOTICE, "Server: Initializing daemon.\n");
     
     /*Ignoring signals*/
     if (daemon_ignore_signals() == ERROR){
-        syslog(LOG_ERR, "Failed while capturing signals: %s\n", strerror(errno));
+        syslog(LOG_ERR, "Server: Failed while capturing signals: %s\n", strerror(errno));
         closelog();
         return ERROR;
     }
     
     /*Creating child, killing parent*/
     if (daemon_kill_parent() == ERROR){
-        syslog(LOG_ERR, "Failed while creating a child and killing the calling process: %s\n", strerror(errno));
+        syslog(LOG_ERR, "Server: Failed while creating a child and killing the calling process: %s\n", strerror(errno));
         closelog();
         return ERROR;
     }
     
     /*Creating new session*/
     if(setsid() == -1){
-       syslog(LOG_ERR, "Failed while creating new session: %s\n", strerror(errno));
+       syslog(LOG_ERR, "Server: Failed while creating new session: %s\n", strerror(errno));
        closelog();
        return ERROR;
     }
     
     /*Losing tty control*/
     if(signal(SIGHUP, SIG_IGN) == SIG_ERR){
-       syslog(LOG_ERR, "Failed while capturing SIGHUP signal: %s\n", strerror(errno));
+       syslog(LOG_ERR, "Server: Failed while capturing signal: %s\n", strerror(errno));
        closelog();
        return ERROR;
     }
@@ -171,25 +171,25 @@ int daemonize(const char *ident){
     
     /*Changing current working directory*/
     if(chdir("/") == -1){
-        syslog(LOG_ERR, "Failed while changing the current working directory: %s\n", strerror(errno));
+        syslog(LOG_ERR, "Server: Failed while changing the current working directory: %s\n", strerror(errno));
         closelog();
         return ERROR;
     }
     
     /*Closing files*/
     if(daemon_close_files() == ERROR){
-        syslog(LOG_ERR, "Failed while closing opened files: %s\n", strerror(errno));
+        syslog(LOG_ERR, "Server: Failed while closing opened files: %s\n", strerror(errno));
         closelog();
         return ERROR;
     }
     
     /*Capturing exiting signals*/
     if(daemon_exiting_signals() == ERROR){
-        syslog(LOG_ERR, "Failed while capturing signals: %s\n", strerror(errno));
+        syslog(LOG_ERR, "Server: Failed while capturing signals: %s\n", strerror(errno));
         closelog();
         return ERROR;
     }
     
-    syslog(LOG_NOTICE, "Daemon initialized correctly.\n");
+    syslog(LOG_NOTICE, "Server: Daemon initialized correctly.\n");
     return OK;
 }

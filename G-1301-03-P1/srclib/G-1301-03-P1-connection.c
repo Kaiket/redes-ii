@@ -120,10 +120,14 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize) {
 
     int sended = 0;
 
+    if (segmentsize <= 0) {
+        segmentsize = TCP_MSS_DEFAULT;
+    }
+
     while (length) {
 
         if (length <= segmentsize) {
-            if (send(socket, data, length, 0) != length) {
+            if (send(socket, data + sended, length, 0) != length) {
                 syslog(LOG_ERR, "Failed while sending msg. %s", strerror(errno));
                 return ERROR;
             }
@@ -131,7 +135,7 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize) {
             return sended;
         }
 
-        if (send(socket, data, segmentsize, 0) != segmentsize) {
+        if (send(socket, data + sended, segmentsize, 0) != segmentsize) {
             syslog(LOG_ERR, "Failed while sending msg. %s", strerror(errno));
             return ERROR;
         }
@@ -139,7 +143,7 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize) {
         length -= segmentsize;
     }
 
-    return OK;
+    return sended;
 }
 
 /*
@@ -149,38 +153,47 @@ en la memoria para un buffer del tamaño adecuado a esa longitud (cuidado con la
 de caracteres) y rellenará el buffer con los datos. 
 Será necesario liberar el buffer tras su llamada.
  */
-int receive_msg(int socket, void **data, size_t segmentsize, char* endchar, int n_endchar) {
+int receive_msg(int socket, void **data, size_t segmentsize, void* endchar) {
 
-    int received = 0;
     short finished_flag = 0;
-    ssize_t length;
+    int total_received = 0;
+    int just_received;
+    void *buffer;
 
     if (segmentsize <= 0) {
         segmentsize = TCP_MSS_DEFAULT;
     }
 
+    buffer = malloc(segmentsize);
+    if (!buffer) {
+        syslog(LOG_ERR, "Failed while allocating memory. %s", strerror(errno));
+        return ERROR;
+    }
+
     while (!finished_flag) {
 
-        *data = realloc(*data, received + segmentsize);
+        if ((just_received = recv(socket, buffer, segmentsize, 0)) == -1) {
+            syslog(LOG_ERR, "Failed while receiving. %s", strerror(errno));
+            return ERROR;
+        }
+
+        *data = realloc(*data, total_received + just_received);
         if (!(*data)) {
             syslog(LOG_ERR, "Failed while allocating memory. %s", strerror(errno));
             return ERROR;
         }
+        
+        memcpy(*data+total_received, buffer, just_received);
+        total_received += just_received;
 
-        if ((length = recv(socket, *data, segmentsize, 0)) == -1) {
-            syslog(LOG_ERR, "Failed while allocating memory. %s", strerror(errno));
-            return ERROR;
-        }
-
-        received += length;
-
-        if (received < segmentsize || !strncmp(data[length - n_endchar], endchar, n_endchar)) {
+        if (just_received < segmentsize || !memcmp(*data+(total_received-strlen(endchar)), endchar, strlen(endchar))) {
             finished_flag = 1;
         }
 
     }
 
-    return received;
+    free(buffer);
+    return total_received;
 }
 
 
@@ -233,3 +246,4 @@ void *thread_routine(void *arg) {
     free(arg);
     pthread_exit(NULL);
 }
+
