@@ -40,7 +40,7 @@ $(OBJLIB): $(SRCLIB) $(HEADERLIB) $(HEADER_ALL)
 
 # Library
 $(LIB_NAME): $(OBJLIB)
-	ar -rv $(LIB_DIR)/$@ S^
+	ar -rv $(LIB_DIR)/$@ $^
 
 # PHONY calls
 .PHONY: all clean compress
@@ -55,6 +55,3 @@ clean:
 	rm -f $(wildcard *_test)
 	rm -f $(wildcard $(OBJ_DIR)/*.o)
 	rm -f $(TGZ_NAME)
-
-echo:
-	@echo $(HEADERLIB)

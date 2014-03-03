@@ -60,6 +60,7 @@ int main(int argc, char* argv[]) {
         if(!strncmp(data, CLOSE_CONNECTION, strlen(CLOSE_CONNECTION))){
             free(data);
             close(client_socket);
+            close(socket);
             return OK;
         }
 
