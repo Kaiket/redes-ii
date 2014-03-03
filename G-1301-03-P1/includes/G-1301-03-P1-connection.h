@@ -75,13 +75,17 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize);
  *      -socket: socket descriptor from where received de message.
  *      -data: pointer to pointer to data.
  *      -segmentsize: max capacity of sending.
- *      -endchar: character that point out end of data.
+ *      -enddata: data that point out end of data.
+ *	-enddata_len: size of enddata
  * 
  * Description:
  *      Receive messages to "data" as fragments of "segmentsize" bytes from socket
  *      with "socket" file descriptor. It allocate memory for *data so it is 
  *      necessary to free it.
  * 
+ *	It stops receiving if the received fragment size is less than segmentsize or if
+ *	the last received segment ends with "enddata"
+ *
  *      If "segmentsize" if set to zero or less, it is used the MSS of
  *      TCP.
  *      
@@ -90,7 +94,7 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize);
  *      ERROR on failure, and it writes the description of the error in the log
  *      file.
  */
-int receive_msg(int socket, void **data, size_t segmentsize, void* endchar);
+int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size_t enddata_len);
 
 
 /*

@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     
     while (1) {
 
-        if ((received = receive_msg(client_socket, &data, SEGMENT_SIZE, END_CHAR)) == ERROR) {
+        if ((received = receive_msg(client_socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) == ERROR) {
             printf("Error al recibir mensaje.\n");
             return ERROR;
         }

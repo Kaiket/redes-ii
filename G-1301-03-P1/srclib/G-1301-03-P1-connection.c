@@ -111,10 +111,14 @@ int close_connection(int socket) {
     return close(socket);
 }
 
+
 /*
-La función que envíe los datos tendrá como parámetros un puntero a los datos (que será de tipo void *)
-y la longitud en bytes a enviar. Devolverá la longitud en bytes enviada o un código de error (negativo). Enviará
-los datos en paquetes del tamaño máximo de un segmento salvo el último que sólo enviará los datos restantes.
+ * Function: send_msg
+ * Implementation comments:
+ * 	Each time that some data is sended, the variable "sended" increments
+ *	its value by the value of segmentsize; length is decremented by
+ *	the same value. 
+ *	This way, length indicates the remaining data that are not sended yet.
  */
 int send_msg(int socket, void *data, size_t length, size_t segmentsize) {
 
@@ -147,13 +151,14 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize) {
 }
 
 /*
-La función que recibe los datos tendrá como parámetro un puntero a un puntero a los datos (que será
-de tipo void **). Devolverá la longitud en bytes recibida o un código de error (negativo). Esta función hará sitio
-en la memoria para un buffer del tamaño adecuado a esa longitud (cuidado con la terminación de cadena
-de caracteres) y rellenará el buffer con los datos. 
-Será necesario liberar el buffer tras su llamada.
+ * Function: receive_msg
+ * Implementation comments:
+ * 	It allocates "segmentsize" bytes for buffer that are used to receive data from socket.
+ *	After that, appends the data received to the content of "data" allocating the necessary
+ *	memory to do it.
+ *	Buffer is freed but "data" is not, so the user must free the variable after using it.
  */
-int receive_msg(int socket, void **data, size_t segmentsize, void* endchar) {
+int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size_t enddata_len) {
 
     short finished_flag = 0;
     int total_received = 0;
@@ -186,7 +191,7 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* endchar) {
         memcpy(*data+total_received, buffer, just_received);
         total_received += just_received;
 
-        if (just_received < segmentsize || !memcmp(*data+(total_received-strlen(endchar)), endchar, strlen(endchar))) {
+        if (just_received < segmentsize || !memcmp(*data+(total_received-enddata_len), enddata, enddata_len)) {
             finished_flag = 1;
         }
 

@@ -15,7 +15,9 @@ void **
 size_t 
 .IR segmentsize , 
 void * 
-.IR endchar
+.IR enddata ,
+size_t 
+.IR enddata_len
 );
 
 .SH DESCRIPTION
@@ -32,7 +34,9 @@ para el que se reservará la memoria necesaria.
 La función termina de recibir mensajes en el momento en el que le llegue un fragmento de tamaño menor que 
 .IR segmentsize
 o si en el fragmento recibido aparece como último dato la cadena apuntada por
-.IR endchar .
+.IR enddata ,
+que tendrá tamaño
+.IR enddata_len .
 
 Si 
 .IR segmentsize
