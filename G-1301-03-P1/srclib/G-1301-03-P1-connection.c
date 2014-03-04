@@ -15,9 +15,13 @@
 #include <linux/tcp.h>
 #include "../includes/G-1301-03-P1-connection.h"
 #include "../includes/G-1301-03-P1-types.h"
+#include <unistd.h>
 
-Thread_handler* threads = NULL;
-int max_threads = 0;
+Thread_handler *threads = NULL;
+
+long unsigned int n_threads = 0;
+long unsigned int already_allocated = 0;
+long threads_per_page = (sysconf(_SC_PAGE_SIZE) / sizeof (Thread_handler));
 
 /*HIGH LEVEL FUNCTIONS (public)*/
 
@@ -88,14 +92,26 @@ pthread_t launch_thread(int client_sock) {
     int *sock_arg;
     pthread_t thread;
 
+    Thread_handler* t_aux = NULL;
     syslog(LOG_NOTICE, "Creating a thread to handle connection in socket %d", client_sock);
     sock_arg = (int*) malloc(sizeof (int));
     *sock_arg = client_sock;
+
+    if ((n_threads % threads_per_page == 0)) {
+        if (n_threads == already_reallocated) {
+            t_aux = (Thread_handler*) realloc(threads, (already_reallocated + threads_per_page) * sizeof (Thread_handler));
+            if (!t_aux) {
+                syslog(LOG_ERR, "Could not allocate memory for the new thread (socket %d).", client_sock);
+                return ERROR;
+            }
+            already_reallocated+=threads_per_page;
+        }
+    }
+    
     if (pthread_create(&thread, NULL, thread_routine, (void *) sock_arg) < 0) {
         syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);
         return ERROR;
     }
-
     if (thread > max_threads) {
 
     }
