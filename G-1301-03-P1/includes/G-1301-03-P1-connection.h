@@ -1,10 +1,7 @@
 /*
  * Description
  */
-typedef struct {
-int socket;
-char active;
-} Thread_handler;
+
 
 /*
  * Function: 
@@ -17,7 +14,7 @@ char active;
  *      ERROR on failure, and it writes the description of the error in the log
  *      file.
  */
-int init_server (int port, int max_connections);
+int init_server(int port, int max_connections);
 
 /*
  * Function: 
@@ -30,7 +27,7 @@ int init_server (int port, int max_connections);
  *      ERROR on failure, and it writes the description of the error in the log
  *      file.
  */
-int accept_connections (int socket);
+int accept_connections(int socket);
 
 /*
  * Function: 
@@ -43,7 +40,7 @@ int accept_connections (int socket);
  *      ERROR on failure, and it writes the description of the error in the log
  *      file.
  */
-int close_connection (int handler);
+int close_connection(int handler);
 
 
 /*
@@ -67,7 +64,7 @@ int close_connection (int handler);
  *      file.
  */
 int send_msg(int socket, void *data, size_t length, size_t segmentsize);
-  
+
 
 /*
  * Function: receive_msg
@@ -108,7 +105,7 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
  *      ERROR on failure, and it writes the description of the error in the log
  *      file.
  */
-int open_TCP_socket ();
+int open_TCP_socket();
 
 /*
  * Function: 
@@ -121,7 +118,7 @@ int open_TCP_socket ();
  *      ERROR on failure, and it writes the description of the error in the log
  *      file.
  */
-int bind_socket (int socket, int port);
+int bind_socket(int socket, int port);
 
 /*
  * Function: 
@@ -134,17 +131,4 @@ int bind_socket (int socket, int port);
  *      ERROR on failure, and it writes the description of the error in the log
  *      file.
  */
-int set_queue_length (int socket, int length);
-
-/*
- * Function: 
- * Parameters:
- * 
- * Description:
- * 
- * Return value:
- *      OK on success.
- *      ERROR on failure, and it writes the description of the error in the log
- *      file.
- */
-void *thread_routine (void *arg);
+int set_queue_length(int socket, int length);

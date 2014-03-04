@@ -11,16 +11,50 @@
 #include <pthread.h>
 #include "../includes/G-1301-03-P1-types.h"
 #include "../includes/G-1301-03-P1-connection.h"
+#include "../includes/G-1301-03-P1-thread_handling.h"
 
 #define SEGMENT_SIZE 20
 #define END_CHAR "findecadena\r\n"
 #define CLOSE_CONNECTION "close_connection\r\n"
 
+
+/*
+ * Thread routine
+ */
+void *thread_routine(void *arg) {
+    int received;
+    void *data;
+    Thread_handler *settings = (Thread_handler *) arg;
+    
+    /*Testing routine*/
+    char *client_message[2000];
+    int read_size;
+    syslog(LOG_NOTICE, "New thread created for socket %d\n", settings->socket);
+    while ((received = receive_msg(client_socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) != ERROR) {
+        send(settings->socket, client_message, read_size, 0);
+        syslog(LOG_NOTICE, "Message received in socket %d\n", settings->socket);
+
+        if (send_msg(client_socket, data, received, SEGMENT_SIZE) == ERROR) {
+            printf("Error al enviar mensaje.\n");
+            free(data);
+        }
+        
+        if(!strncmp(data, CLOSE_CONNECTION, strlen(CLOSE_CONNECTION))){
+            free(data);
+            close(client_socket);
+            close(socket);
+            pthread_exit(NULL);;
+        }
+        free(data);
+        
+    }
+    pthread_exit(NULL);
+}
+
+
 int main(int argc, char* argv[]) {
 
     int socket, client_socket;
-    int received;
-    void *data;
 
     if (argc != 2) {
         printf("Error de argumentos.\nUso:\n\t %s num_puerto\n", argv[0]);
@@ -39,31 +73,18 @@ int main(int argc, char* argv[]) {
     }
     printf("Aceptando conexiones\n");
     fflush(stdout);
-
-    client_socket = accept_connections(socket);
-    printf("Conexion aceptada\n");
-    printf("Socket: %d\nClient Socket: %d\n", socket, client_socket);
-    fflush(stdout);
     
     while (1) {
-
-        if ((received = receive_msg(client_socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) == ERROR) {
-            printf("Error al recibir mensaje.\n");
-            return ERROR;
-        }
-
-        if (send_msg(client_socket, data, received, SEGMENT_SIZE) == ERROR) {
-            printf("Error al enviar mensaje.\n");
-            return ERROR;
-        }
+	client_socket = accept_connections(socket);
+	printf("Conexion aceptada\n");
+    	printf("Socket: %d\nClient Socket: %d\n", socket, client_socket);
+    	void nbjoin_threads (void);
+	printf("Creando hilo %d\n", array_first_free);
+	fflush(stdout);
+	if (launch_thread(client_sock, thread_routine) != OK) {
+            printf("Error al lanzar hilo %d\n", array_first_free);
+	}
         
-        if(!strncmp(data, CLOSE_CONNECTION, strlen(CLOSE_CONNECTION))){
-            free(data);
-            close(client_socket);
-            close(socket);
-            return OK;
-        }
-
     }
 
     return OK;

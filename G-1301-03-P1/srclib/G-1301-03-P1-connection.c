@@ -17,10 +17,11 @@
 #include "../includes/G-1301-03-P1-types.h"
 #include <unistd.h>
 
-Thread_handler *threads = NULL;
+Thread_handler *thread_array = NULL;
 
 long unsigned int n_threads = 0;
 long unsigned int already_allocated = 0;
+long unsigned int array_first_free = 0;
 long threads_per_page = (sysconf(_SC_PAGE_SIZE) / sizeof (Thread_handler));
 
 /*HIGH LEVEL FUNCTIONS (public)*/
@@ -68,10 +69,9 @@ conexión no se ha realizado.
  */
 int accept_connections(int socket) {
     struct sockaddr_in client;
-    int client_sock, addrsize, *sock_arg = NULL;
+    int client_sock, addrsize;
     char IP_char[16];
     u_int8_t *client_IP;
-    pthread_t thread;
 
     addrsize = sizeof (client);
 
@@ -89,13 +89,10 @@ int accept_connections(int socket) {
 }
 
 pthread_t launch_thread(int client_sock) {
-    int *sock_arg;
     pthread_t thread;
 
     Thread_handler* t_aux = NULL;
     syslog(LOG_NOTICE, "Creating a thread to handle connection in socket %d", client_sock);
-    sock_arg = (int*) malloc(sizeof (int));
-    *sock_arg = client_sock;
 
     if ((n_threads % threads_per_page == 0)) {
         if (n_threads == already_reallocated) {
@@ -108,13 +105,16 @@ pthread_t launch_thread(int client_sock) {
         }
     }
     
-    if (pthread_create(&thread, NULL, thread_routine, (void *) sock_arg) < 0) {
+    thread_array[array_first_free].active=1;
+    thread_array[array_first_free].socket=client_sock;
+    
+    if (pthread_create(&thread, NULL, thread_routine, ((void *) &thread_array[array_first_free])) < 0) {
         syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);
+        thread_array[array_first_free].active=0;
         return ERROR;
     }
-    if (thread > max_threads) {
-
-    }
+    
+    thread_array[array_first_free].thread_id=thread;
 
     return thread;
 }
@@ -255,16 +255,15 @@ int set_queue_length(int socket, int length) {
  * Thread routine
  */
 void *thread_routine(void *arg) {
-    int socket = *((int *) arg);
+    Thread_handler *settings = (Thread_handler *) arg;
     /*Testing routine*/
     char *client_message[2000];
     int read_size;
-    syslog(LOG_NOTICE, "New thread created for socket %d\n", socket);
-    while ((read_size = recv(socket, client_message, 2000, 0)) > 0) {
-        send(socket, client_message, read_size, 0);
-        syslog(LOG_NOTICE, "Message received in socket %d\n", socket);
+    syslog(LOG_NOTICE, "New thread created for socket %d\n", settings->socket);
+    while ((read_size = recv(settings->socket, client_message, 2000, 0)) > 0) {
+        send(settings->socket, client_message, read_size, 0);
+        syslog(LOG_NOTICE, "Message received in socket %d\n", settings->socket);
     }
-    free(arg);
     pthread_exit(NULL);
 }
 
