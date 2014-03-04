@@ -17,12 +17,6 @@
 #include "../includes/G-1301-03-P1-types.h"
 #include <unistd.h>
 
-Thread_handler *thread_array = NULL;
-
-long unsigned int n_threads = 0;
-long unsigned int already_allocated = 0;
-long unsigned int array_first_free = 0;
-long threads_per_page = (sysconf(_SC_PAGE_SIZE) / sizeof (Thread_handler));
 
 /*HIGH LEVEL FUNCTIONS (public)*/
 
@@ -88,36 +82,6 @@ int accept_connections(int socket) {
     return client_sock;
 }
 
-pthread_t launch_thread(int client_sock) {
-    pthread_t thread;
-
-    Thread_handler* t_aux = NULL;
-    syslog(LOG_NOTICE, "Creating a thread to handle connection in socket %d", client_sock);
-
-    if ((n_threads % threads_per_page == 0)) {
-        if (n_threads == already_reallocated) {
-            t_aux = (Thread_handler*) realloc(threads, (already_reallocated + threads_per_page) * sizeof (Thread_handler));
-            if (!t_aux) {
-                syslog(LOG_ERR, "Could not allocate memory for the new thread (socket %d).", client_sock);
-                return ERROR;
-            }
-            already_reallocated+=threads_per_page;
-        }
-    }
-    
-    thread_array[array_first_free].active=1;
-    thread_array[array_first_free].socket=client_sock;
-    
-    if (pthread_create(&thread, NULL, thread_routine, ((void *) &thread_array[array_first_free])) < 0) {
-        syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);
-        thread_array[array_first_free].active=0;
-        return ERROR;
-    }
-    
-    thread_array[array_first_free].thread_id=thread;
-
-    return thread;
-}
 
 /*Función que cierra la comunicación. Tendrá como parámetro el handler de la conexión a cerrar y devolverá
 un código de error.
@@ -251,19 +215,4 @@ int set_queue_length(int socket, int length) {
     return listen(socket, length);
 }
 
-/*
- * Thread routine
- */
-void *thread_routine(void *arg) {
-    Thread_handler *settings = (Thread_handler *) arg;
-    /*Testing routine*/
-    char *client_message[2000];
-    int read_size;
-    syslog(LOG_NOTICE, "New thread created for socket %d\n", settings->socket);
-    while ((read_size = recv(settings->socket, client_message, 2000, 0)) > 0) {
-        send(settings->socket, client_message, read_size, 0);
-        syslog(LOG_NOTICE, "Message received in socket %d\n", settings->socket);
-    }
-    pthread_exit(NULL);
-}
 
