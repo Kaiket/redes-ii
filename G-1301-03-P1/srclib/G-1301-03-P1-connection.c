@@ -11,11 +11,9 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <inttypes.h>
-#include <pthread.h>
 #include <linux/tcp.h>
 #include "../includes/G-1301-03-P1-connection.h"
 #include "../includes/G-1301-03-P1-types.h"
-#include <unistd.h>
 
 
 /*HIGH LEVEL FUNCTIONS (public)*/
@@ -143,7 +141,7 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
     short finished_flag = 0;
     int total_received = 0;
     int just_received;
-    void *buffer;
+    void *buffer=NULL, *memalloc;
 
     if (segmentsize <= 0) {
         segmentsize = TCP_MSS_DEFAULT;
@@ -155,19 +153,21 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
         return ERROR;
     }
 
+    *data=NULL;
+    
     while (!finished_flag) {
-
-        if ((just_received = recv(socket, buffer, segmentsize, 0)) == -1) {
+        memalloc=NULL;
+        if ((just_received = recv(socket, buffer, segmentsize, 0)) <= 0) {
             syslog(LOG_ERR, "Failed while receiving. %s", strerror(errno));
             return ERROR;
         }
 
-        *data = realloc(*data, total_received + just_received);
-        if (!(*data)) {
+        memalloc = realloc(*data, total_received + just_received);
+        if (!(memalloc)) {
             syslog(LOG_ERR, "Failed while allocating memory. %s", strerror(errno));
             return ERROR;
         }
-        
+        *data=memalloc;
         memcpy(*data+total_received, buffer, just_received);
         total_received += just_received;
 

@@ -14,7 +14,7 @@
 #include "../includes/G-1301-03-P1-thread_handling.h"
 
 #define SEGMENT_SIZE 20
-#define END_CHAR "findecadena\r\n"
+#define END_CHAR "\r\n"
 #define CLOSE_CONNECTION "close_connection\r\n"
 
 
@@ -30,23 +30,27 @@ void *thread_routine(void *arg) {
     char *client_message[2000];
     int read_size;
     syslog(LOG_NOTICE, "New thread created for socket %d\n", settings->socket);
-    while ((received = receive_msg(client_socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) != ERROR) {
-        send(settings->socket, client_message, read_size, 0);
+    
+//    while ((received=recv(settings->socket, client_message, 2000, 0)) > 0) {
+//        syslog(LOG_NOTICE, "Received message in socket %d\n", settings->socket);
+//        send(settings->socket, client_message, received, 0);
+//    }
+    
+    
+    while ((received = receive_msg(settings->socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) != ERROR) {
         syslog(LOG_NOTICE, "Message received in socket %d\n", settings->socket);
 
-        if (send_msg(client_socket, data, received, SEGMENT_SIZE) == ERROR) {
+        if (send_msg(settings->socket, data, received, SEGMENT_SIZE) == ERROR) {
             printf("Error al enviar mensaje.\n");
             free(data);
         }
         
         if(!strncmp(data, CLOSE_CONNECTION, strlen(CLOSE_CONNECTION))){
             free(data);
-            close(client_socket);
-            close(socket);
-            pthread_exit(NULL);;
+            close(settings->socket);
+            pthread_exit(NULL);
         }
-        free(data);
-        
+        free(data);      
     }
     pthread_exit(NULL);
 }
@@ -54,7 +58,7 @@ void *thread_routine(void *arg) {
 
 int main(int argc, char* argv[]) {
 
-    int socket, client_socket;
+    int socket, client_socket, position;
 
     if (argc != 2) {
         printf("Error de argumentos.\nUso:\n\t %s num_puerto\n", argv[0]);
@@ -78,15 +82,17 @@ int main(int argc, char* argv[]) {
 	client_socket = accept_connections(socket);
 	printf("Conexion aceptada\n");
     	printf("Socket: %d\nClient Socket: %d\n", socket, client_socket);
-    	void nbjoin_threads (void);
-	printf("Creando hilo %d\n", array_first_free);
+        fflush(stdout);
+    	position=nbjoin_threads();
+	printf("Creando hilo %d\n", position);
 	fflush(stdout);
-	if (launch_thread(client_sock, thread_routine) != OK) {
-            printf("Error al lanzar hilo %d\n", array_first_free);
+	if (launch_thread(client_socket, thread_routine) != OK) {
+            printf("Error al lanzar hilo %d\n", position);
+            fflush(stdout);
 	}
-        
     }
-
+    
+    close(socket);
     return OK;
 
 }
