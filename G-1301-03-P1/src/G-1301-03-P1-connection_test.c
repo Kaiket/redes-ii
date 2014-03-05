@@ -17,7 +17,6 @@
 #define END_CHAR "\r\n"
 #define CLOSE_CONNECTION "close_connection\r\n"
 
-
 /*
  * Thread routine
  */
@@ -30,12 +29,6 @@ void *thread_routine(void *arg) {
     char *client_message[2000];
     int read_size;
     syslog(LOG_NOTICE, "New thread created for socket %d\n", settings->socket);
-    
-//    while ((received=recv(settings->socket, client_message, 2000, 0)) > 0) {
-//        syslog(LOG_NOTICE, "Received message in socket %d\n", settings->socket);
-//        send(settings->socket, client_message, received, 0);
-//    }
-    
     
     while ((received = receive_msg(settings->socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) != ERROR) {
         syslog(LOG_NOTICE, "Message received in socket %d\n", settings->socket);
