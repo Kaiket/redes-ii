@@ -6,7 +6,7 @@
 #include <syslog.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <strings.h>
+#include <string.h>
 #include "../includes/G-1301-03-P1-types.h"
 #include "../includes/G-1301-03-P1-thread_handling.h"
 

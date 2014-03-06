@@ -2,15 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum {
-    cmd1,
-    cmd2,
-    cmd3,
-    cmd4,
-    TOTAL
-} command;
-
-char *commands[4]={"cmd1", "cmd2", "cmd3", "cmd4"};
 
 int parser(int total, char* strings[], char* msg) {
     int i;
@@ -20,19 +11,4 @@ int parser(int total, char* strings[], char* msg) {
         }
     }
     return i;
-}
-
-int exec_cmd (int number) {
-    switch(number) {
-        case 1:
-            break;
-        case 2:
-            break;
-        case 3:
-            break;
-        case 4:
-            break;
-        default:
-            break;
-    }
 }
