@@ -30,7 +30,7 @@ void *thread_routine(void *arg) {
     int read_size;
     syslog(LOG_NOTICE, "New thread created for socket %d\n", settings->socket);
     
-    while ((received = receive_msg(settings->socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) != ERROR) {
+    while ((received = receive_msg(settings->socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) > 0) {
         syslog(LOG_NOTICE, "Message received in socket %d\n", settings->socket);
 
         if (send_msg(settings->socket, data, received, SEGMENT_SIZE) == ERROR) {
