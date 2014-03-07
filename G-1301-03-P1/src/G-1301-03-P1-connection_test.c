@@ -9,9 +9,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include "../includes/G-1301-03-P1-types.h"
-#include "../includes/G-1301-03-P1-connection.h"
-#include "../includes/G-1301-03-P1-thread_handling.h"
+#include "G-1301-03-P1-types.h"
+#include "G-1301-03-P1-connection.h"
+#include "G-1301-03-P1-thread_handling.h"
 
 #define SEGMENT_SIZE 20
 #define END_CHAR "\r\n"

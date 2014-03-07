@@ -1,14 +1,14 @@
-# Macros
-CC := gcc
-CFLAGS := 
-LIBS := -lpthread
-
 # Directories
 SRC_DIR := src
 SRCLIB_DIR := srclib
 OBJ_DIR := obj
 HEADER_DIR := includes
 LIB_DIR := lib
+
+# Macros
+CC := gcc
+CFLAGS := -I $(HEADER_DIR)
+LIBS := -lpthread
 
 # Sources, objects, headers, names.
 SRC = $(wildcard $(SRC_DIR)/*.c)
