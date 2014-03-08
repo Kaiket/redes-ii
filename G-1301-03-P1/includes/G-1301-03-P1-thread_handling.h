@@ -8,3 +8,7 @@ typedef struct {
     int socket;
     char active;
 } Thread_handler;
+
+int launch_thread(int client_sock, void* (*thread_routine) (void *arg));
+int nbjoin_threads (void);
+int seek_array_first_free (void);

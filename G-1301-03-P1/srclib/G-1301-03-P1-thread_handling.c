@@ -1,6 +1,11 @@
 /*
  * Thread handling library for server connections
  */
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
@@ -76,7 +81,7 @@ int launch_thread(int client_sock, void* (*thread_routine) (void *arg)) {
  */
 int nbjoin_threads (void) {
     int i;
-    if (!thread_array) return;
+    if (!thread_array) return ERROR;
     for (i=0; i<already_allocated; ++i) {
         if (thread_array[i].active) {
             if (pthread_tryjoin_np(thread_array[i].thread_id, NULL) == 0) { /*thread terminated*/

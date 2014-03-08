@@ -1,11 +1,15 @@
-#include "../includes/G-1301-03-P1-types.h"
-#include "../includes/G-1301-03-P1-thread_handling.h"
-#include "../includes/G-1301-03-P1-ircserver.h"
+#include "G-1301-03-P1-types.h"
+#include "G-1301-03-P1-thread_handling.h"
+#include "G-1301-03-P1-ircserver.h"
+#include "G-1301-03-P1-connection.h"
+#include "G-1301-03-P1-irc_errors.h"
+#include "G-1301-03-P1-parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
 #include <pthread.h>
+#include <errno.h>
 
 
 enum {
@@ -25,7 +29,7 @@ char *command_names[4]={"cmd1", "cmd2", "cmd3", "cmd4"};
  */
 void *irc_thread_routine(void *arg) {
 
-    int received;
+    int received, command;
     void *data;
     Thread_handler *settings = (Thread_handler *) arg;
 
@@ -35,7 +39,17 @@ void *irc_thread_routine(void *arg) {
     while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
 
         /*Do things*/
-        free(data);
+        if ((command = parser(TOTAL, command_names, data)) == TOTAL) {
+            if(irc_send_numeric_response(settings->socket, ERR_UNKNOWNCOMMAND) == ERROR){
+                syslog(LOG_ERR, "Server: Failed while sending message to socket %d: %s", settings->socket, strerror(errno));
+            }
+        }
+        else{
+            if(exec_cmd(command) == ERROR){
+                syslog(LOG_ERR, "Server: Failed while executing command %s", strerror(errno));
+            }
+        }
+
     }
 
     pthread_exit(NULL);
@@ -149,4 +163,21 @@ int exec_cmd (int number) {
         default:
             break;
     }
+
+    return OK;
+}
+
+int irc_send_numeric_response(int socket, int numeric_response){
+
+    char ascii_response[IRC_NR_LEN+1];
+
+    if(sprintf(ascii_response, "%d", numeric_response) <= 0){
+        return ERROR;
+    }
+
+    if(send_msg(socket, ascii_response, IRC_NR_LEN+1, IRC_MSG_LENGTH) <= 0){
+        return ERROR;
+    }
+
+    return OK;
 }

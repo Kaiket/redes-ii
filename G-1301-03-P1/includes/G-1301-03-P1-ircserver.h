@@ -11,6 +11,7 @@
 #define IRC_BLANK 0x20
 #define IRC_PREFIX ':'
 #define IRC_MSG_END "\r\n"
+#define IRC_NR_LEN 3
 #ifndef ERROR
         #define ERROR -1
 #endif
@@ -68,6 +69,15 @@ int irc_split_cmd (char *cmd, char **target_array, int *prefix, int *n_strings);
  * return ERROR if the string is invalid (contains a prefix and a last argument without a command)
  */
 int irc_get_cmd_position(char* cmd);
+
+void *irc_thread_routine(void *arg);
+void irc_exit_message();
+int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, int *n_strings);
+int irc_get_cmd_position(char* cmd);
+int exec_cmd (int number);
+int irc_send_numeric_response(int socket, int numeric_response);
+
+
 
 
 #endif

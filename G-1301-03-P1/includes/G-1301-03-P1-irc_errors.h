@@ -1,4 +1,3 @@
-
 #ifndef IRC_CODES_H
 #define IRC_CODES_H
  
@@ -120,3 +119,5 @@
 #define RPL_ADMINLOC1 257
 #define RPL_ADMINLOC2 258
 #define RPL_ADMINEMAIL 259
+
+#endif

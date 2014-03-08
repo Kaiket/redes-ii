@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <inttypes.h>
 #include <linux/tcp.h>
+#include <unistd.h>
 #include "../includes/G-1301-03-P1-connection.h"
 #include "../includes/G-1301-03-P1-types.h"
 

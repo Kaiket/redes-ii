@@ -1,7 +1,13 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <../includes/G-1301-03-P1-ircserver.h>
-#include <../includes/G-1301-03-P1-daemonize.h>
+#include <syslog.h>
+#include <errno.h>
+#include "G-1301-03-P1-types.h"
+#include "G-1301-03-P1-connection.h"
+#include "G-1301-03-P1-thread_handling.h"
+#include "G-1301-03-P1-ircserver.h"
+#include "G-1301-03-P1-daemonize.h"
 
 int main(int argc, char **argv) {
 

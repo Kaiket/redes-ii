@@ -26,8 +26,6 @@ void *thread_routine(void *arg) {
     Thread_handler *settings = (Thread_handler *) arg;
     
     /*Testing routine*/
-    char *client_message[2000];
-    int read_size;
     syslog(LOG_NOTICE, "New thread created for socket %d\n", settings->socket);
     
     while ((received = receive_msg(settings->socket, &data, SEGMENT_SIZE, END_CHAR, strlen(END_CHAR))) > 0) {

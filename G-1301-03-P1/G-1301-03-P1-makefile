@@ -7,24 +7,25 @@ LIB_DIR := lib
 
 # Macros
 CC := gcc
-CFLAGS := -I $(HEADER_DIR)
+CFLAGS := -I $(HEADER_DIR) -Wall
 LIBS := -lpthread
 
 # Sources, objects, headers, names.
-SRC = $(wildcard $(SRC_DIR)/*.c)
-SRCLIB = $(wildcard $(SRCLIB_DIR)/*.c)
+SRC := $(wildcard $(SRC_DIR)/*.c)
+SRCLIB := $(wildcard $(SRCLIB_DIR)/*.c)
 
-OBJ = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC))
-OBJLIB = $(patsubst $(SRCLIB_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCLIB))
+OBJ := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC))
+OBJLIB := $(patsubst $(SRCLIB_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCLIB))
 
-HEADERLIB = $(patsubst $(SRCLIB_DIR)/%.c,$(HEADER_DIR)/%.h,$(SRCLIB))
-HEADER_ALL = $(HEADER_DIR)/G-1301-03-P1-types.h
+HEADERLIB := $(patsubst $(SRCLIB_DIR)/%.c,$(HEADER_DIR)/%.h,$(SRCLIB))
+HEADER_ALL := $(HEADER_DIR)/G-1301-03-P1-types.h
+HEADER_ALL_LIB := $(HEADER_DIR)/G-1301-03-P1-irc_errors.h
 
 DIR_NAME := ../G-1301-03-P1
 TGZ_NAME := ../G-1301-03-P1.tgz
 LIB_NAME := G-1301-03-P1-libnetworks.a
 
-BINARIES = $(patsubst $(OBJ_DIR)/%.o,%,$(OBJ))
+BINARIES := $(patsubst $(OBJ_DIR)/%.o,%,$(OBJ))
 
 # Targets 
 $(BINARIES): $(OBJ) $(OBJLIB)
@@ -33,23 +34,33 @@ $(BINARIES): $(OBJ) $(OBJLIB)
 $(OBJ): $(SRC) $(HEADERLIB) $(HEADER_ALL)
 	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@ $(LIBS)
 
-$(OBJLIB): $(SRCLIB) $(HEADERLIB) $(HEADER_ALL)
+$(OBJLIB): $(SRCLIB) $(HEADERLIB) $(HEADER_ALL) $(HEADER_ALL_LIB)
 	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRCLIB_DIR)/%.c, $@) -o $@ $(LIBS)
-
-
 
 # Library
 $(LIB_NAME): $(OBJLIB)
 	ar -rv $(LIB_DIR)/$@ $^
 
 # PHONY calls
-.PHONY: all clean compress
+.PHONY: all clean clear compress tar tgz pack
 
-all: $(OBJLIB) $(OBJ)
-	$(CC) $(CFLAGS) $^ -o $(OBJ_DIR)/$@ $(LIBS)
+all: $(BINARIES)
+	
+
+pack: compress
+
+
+tgz: compress
+
+
+tar: compress
+
 
 compress: clean
 	tar -czvf $(TGZ_NAME) $(DIR_NAME)
+
+clear: clean
+
 
 clean:
 	rm -f $(wildcard *_test)

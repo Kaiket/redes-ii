@@ -12,7 +12,7 @@ char* comandos_prueba[6]={
     "cd   ef      ghi j kl mno pqrst u vw xyz 012 3 45 6789 10 11 argumentNo16 \r\n" //ejemplo: mas de 15 argumentos sin prefijo
 };
 
-void main (void) {
+int main () {
 	int n_args=0, prefijo=0, i, j;
 	char *args[17];
 	char *comando;
@@ -33,4 +33,6 @@ void main (void) {
             printf("\n\n\n");
         }
         free(comando);
+
+        return (EXIT_SUCCESS);
 }
