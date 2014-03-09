@@ -3,6 +3,7 @@
 
 #include <limits.h>
 
+#define SERVER_NAME "Guillermo_y_Enrique_IRC_SERVER_V1.0"
 #define SERVER_LOG_IDENT "IRC_SERVER"
 #define SERVER_MAX_CONNECTIONS INT_MAX
 #define IRC_DEFAULT_PORT 6667

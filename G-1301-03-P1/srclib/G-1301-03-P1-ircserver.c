@@ -94,11 +94,11 @@ void irc_exit_message() {
  *      ERROR_BAD_SYNTAX is returned if the syntax of the command syntax doesn't fit RFC specs (i.e: exceeds number of arguments)
  */
 int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, int *n_strings) {
-    int arg_start = 0, arg_end = 0, prefix_flag = 1, cmd_length, i;
+    int arg_start = 0, prefix_flag = 1, cmd_length, i=0;
     if (!cmd || !target_array || !prefix || !n_strings) return ERROR;
     *n_strings = 0;
     *prefix = 0;
-    cmd_length = strlen(cmd) - strlen(IRC_MSG_END);
+    cmd_length = strlen(cmd);
     while (i < cmd_length) {
         if (cmd[i] != IRC_BLANK) {
             if (*n_strings == (*prefix + 1 + MAX_CMD_ARGS)) {
@@ -113,8 +113,6 @@ int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, 
                 ++i;
             }/*last argument found*/
             else if (cmd[i] == IRC_PREFIX) {
-                arg_end = cmd_length - strlen(IRC_MSG_END);
-                cmd[arg_end + 1] = '\0';
                 i = cmd_length;
             }/*common parameter found*/
             else {
@@ -138,8 +136,8 @@ int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, 
  * return ERROR_BAD_SYNTAX if the string is invalid (contains a prefix and a last argument without a command)
  */
 int irc_get_cmd_position(char* cmd) {
-    int i, prefix = 0, cmd_length;
-    cmd_length = strlen(cmd) - strlen(IRC_MSG_END);
+    int i=0, prefix = 0, cmd_length;
+    cmd_length = strlen(cmd);
     while (i < cmd_length) {
         if (cmd[i] != IRC_BLANK) {
             if (cmd[i] == IRC_PREFIX) {

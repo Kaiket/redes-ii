@@ -4,12 +4,12 @@
 #include <string.h>
 
 char* comandos_prueba[6]={ 
-    " :ab    cd   ef      ghi : j kl \r\n", //ejemplo cmd bien formado con prefijo
-    " :ab : j kl \r\n", //ejemplo comando mal formado (no hay comando, pero el programa no dara error: posicion del comando -1)
-    "cd   ef      g:hi : j kl \r\n", //ejemplo comando bien formado sin prefijo
-    ":ab cd   ef      ghi j kl mno pqrst u vw xyz 012 3 45 6789 10 11 \r\n", //ejemplo: 15 argumentos
-    ":ab cd   ef      ghi j kl mno pqrst u vw xyz 012 3 45 6789 10 11 argumentNo16 \r\n", //ejemplo: mas de 15 argumentos y prefijo
-    "cd   ef      ghi j kl mno pqrst u vw xyz 012 3 45 6789 10 11 argumentNo16 \r\n" //ejemplo: mas de 15 argumentos sin prefijo
+    " :ab    cd   ef      ghi : j kl", //ejemplo cmd bien formado con prefijo
+    " :ab : j kl ", //ejemplo comando mal formado (no hay comando, pero el programa no dara error: posicion del comando -1)
+    "cd   ef      g:hi : j kl ", //ejemplo comando bien formado sin prefijo
+    ":ab cd   ef      ghi j kl mno pqrst u vw xyz 012 3 45 6789 10 11 ", //ejemplo: 15 argumentos
+    ":ab cd   ef      ghi j kl mno pqrst u vw xyz 012 3 45 6789 10 11 argumentNo16 ", //ejemplo: mas de 15 argumentos y prefijo
+    "cd   ef      ghi j kl mno pqrst u vw xyz 012 3 45 6789 10 11 argumentNo16 " //ejemplo: mas de 15 argumentos sin prefijo
 };
 
 int main () {

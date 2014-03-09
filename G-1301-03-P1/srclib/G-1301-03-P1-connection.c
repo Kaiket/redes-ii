@@ -62,7 +62,8 @@ conexión no se ha realizado.
  */
 int accept_connections(int socket) {
     struct sockaddr_in client;
-    int client_sock, addrsize;
+    int client_sock;
+    unsigned int addrsize;
     char IP_char[16];
     u_int8_t *client_IP;
 
