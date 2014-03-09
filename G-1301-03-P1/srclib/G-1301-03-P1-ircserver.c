@@ -11,16 +11,15 @@
 #include <pthread.h>
 #include <errno.h>
 
-
 enum {
     cmd1,
     cmd2,
     cmd3,
     cmd4,
-    TOTAL
+    IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[4]={"cmd1", "cmd2", "cmd3", "cmd4"};
+char *command_names[4] = {"cmd1", "cmd2", "cmd3", "cmd4"};
 
 /*
  * Function: thread_routine
@@ -29,7 +28,8 @@ char *command_names[4]={"cmd1", "cmd2", "cmd3", "cmd4"};
  */
 void *irc_thread_routine(void *arg) {
 
-    int received, command;
+    int received, processed, command_pos, command_num;
+    char *command, *save_ptr;
     void *data;
     Thread_handler *settings = (Thread_handler *) arg;
 
@@ -38,18 +38,28 @@ void *irc_thread_routine(void *arg) {
 
     while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
 
-        /*Do things*/
-        if ((command = parser(TOTAL, command_names, data)) == TOTAL) {
-            if(irc_send_numeric_response(settings->socket, ERR_UNKNOWNCOMMAND) == ERROR){
-                syslog(LOG_ERR, "Server: Failed while sending message to socket %d: %s", settings->socket, strerror(errno));
-            }
-        }
-        else{
-            if(exec_cmd(command) == ERROR){
-                syslog(LOG_ERR, "Server: Failed while executing command %s", strerror(errno));
-            }
-        }
+        command = strtok_r(data, IRC_MSG_END, &save_ptr);
+        processed = strlen(command);
 
+        while (processed <= received) {
+            if ((command_pos = irc_get_cmd_position(command)) != ERROR_WRONG_SYNTAX) {
+                if ((command_num = parser(IRC_TOTAL_COMMANDS, command_names, command + command_pos)) == IRC_TOTAL_COMMANDS) {
+                    if (irc_send_numeric_response(settings->socket, ERR_UNKNOWNCOMMAND) == ERROR) {
+                        syslog(LOG_ERR, "Server: Failed while sending numeric response to socket %d: %s", settings->socket, strerror(errno));
+                    }
+                } else {
+                    exec_cmd(command_num, command);
+                }
+            }
+
+            if (processed < received) {
+                command = strtok_r(NULL, IRC_MSG_END, &save_ptr);
+            }
+
+            processed += strlen(command);
+        }
+        
+        free(data);
     }
 
     pthread_exit(NULL);
@@ -84,45 +94,42 @@ void irc_exit_message() {
  *      ERROR is returned if arguments are incorrect
  *      ERROR_BAD_SYNTAX is returned if the syntax of the command syntax doesn't fit RFC specs (i.e: exceeds number of arguments)
  */
-int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, int *n_strings) {
-    int arg_start=0, arg_end=0, prefix_flag=1, cmd_length, i;
+int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, int *n_strings) {
+    int arg_start = 0, arg_end = 0, prefix_flag = 1, cmd_length, i;
     if (!cmd || !target_array || !prefix || !n_strings) return ERROR;
-    *n_strings=0;
-    *prefix=0;
-    cmd_length=strlen(cmd) - strlen(IRC_MSG_END);
-    while ( i < cmd_length ) {
-        if (cmd[i]!=IRC_BLANK) {
-            if (*n_strings==(*prefix + 1 + MAX_CMD_ARGS)) {
-                return ERROR_BAD_SYNTAX;
+    *n_strings = 0;
+    *prefix = 0;
+    cmd_length = strlen(cmd) - strlen(IRC_MSG_END);
+    while (i < cmd_length) {
+        if (cmd[i] != IRC_BLANK) {
+            if (*n_strings == (*prefix + 1 + MAX_CMD_ARGS)) {
+                return ERROR_WRONG_SYNTAX;
             }
-            arg_start=i;
+            arg_start = i;
             /*prefix found*/
-            if (cmd[i]==IRC_PREFIX && prefix_flag==1) {
-                *prefix=1;
-                while ((cmd[i]!=IRC_BLANK) && (i < cmd_length)) ++i; /*advance till the next blank char*/
-                cmd[i]='\0';
+            if (cmd[i] == IRC_PREFIX && prefix_flag == 1) {
+                *prefix = 1;
+                while ((cmd[i] != IRC_BLANK) && (i < cmd_length)) ++i; /*advance till the next blank char*/
+                cmd[i] = '\0';
                 ++i;
-            }
-            /*last argument found*/
-            else if (cmd[i]==IRC_PREFIX) {
-                arg_end=cmd_length-strlen(IRC_MSG_END);
-                cmd[arg_end+1]='\0';
-                i=cmd_length;
-            }
-            /*common parameter found*/
+            }/*last argument found*/
+            else if (cmd[i] == IRC_PREFIX) {
+                arg_end = cmd_length - strlen(IRC_MSG_END);
+                cmd[arg_end + 1] = '\0';
+                i = cmd_length;
+            }/*common parameter found*/
             else {
-                while ((cmd[i]!=IRC_BLANK) && (i < cmd_length)) ++i; /*advance till the next blank char*/
-                cmd[i]='\0';
+                while ((cmd[i] != IRC_BLANK) && (i < cmd_length)) ++i; /*advance till the next blank char*/
+                cmd[i] = '\0';
                 ++i;
             }
-            target_array[*n_strings]=&(cmd[arg_start]);
+            target_array[*n_strings] = &(cmd[arg_start]);
             ++(*n_strings);
-            prefix_flag=0; /*after a non-blank char, if what we read was not a prefix, we won't have one*/
-        }
-        else ++i;
+            prefix_flag = 0; /*after a non-blank char, if what we read was not a prefix, we won't have one*/
+        } else ++i;
     }
-    for (i=(*n_strings); i<MAX_CMD_ARGS; ++i) {
-        target_array[i]=NULL;
+    for (i = (*n_strings); i < MAX_CMD_ARGS; ++i) {
+        target_array[i] = NULL;
     }
     return OK;
 }
@@ -132,26 +139,23 @@ int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, i
  * return ERROR_BAD_SYNTAX if the string is invalid (contains a prefix and a last argument without a command)
  */
 int irc_get_cmd_position(char* cmd) {
-    int i, prefix=0, cmd_length;
-    cmd_length=strlen(cmd)-strlen(IRC_MSG_END);
-    while ( i < cmd_length ) {
-        if (cmd[i]!=IRC_BLANK) {
-            if (cmd[i]==IRC_PREFIX) {
+    int i, prefix = 0, cmd_length;
+    cmd_length = strlen(cmd) - strlen(IRC_MSG_END);
+    while (i < cmd_length) {
+        if (cmd[i] != IRC_BLANK) {
+            if (cmd[i] == IRC_PREFIX) {
                 if (prefix) return ERROR; /*already found a prefix, invalid command*/
-                while ((cmd[i]!=IRC_BLANK) && (i < cmd_length)) ++i; /*advance till the next blank char*/
-                prefix=1;
-            }
-            else return i;
-        }
-        else ++i;
+                while ((cmd[i] != IRC_BLANK) && (i < cmd_length)) ++i; /*advance till the next blank char*/
+                prefix = 1;
+            } else return i;
+        } else ++i;
     }
     /*while ended without finding a command*/
-    return ERROR_BAD_SYNTAX;
+    return ERROR_WRONG_SYNTAX;
 }
 
-
-int exec_cmd (int number) {
-    switch(number) {
+int exec_cmd(int number, char *msg) {
+    switch (number) {
         case 1:
             break;
         case 2:
@@ -167,15 +171,15 @@ int exec_cmd (int number) {
     return OK;
 }
 
-int irc_send_numeric_response(int socket, int numeric_response){
+int irc_send_numeric_response(int socket, int numeric_response) {
 
-    char ascii_response[IRC_NR_LEN+1];
+    char ascii_response[IRC_NR_LEN + 1];
 
-    if(sprintf(ascii_response, "%d", numeric_response) <= 0){
+    if (sprintf(ascii_response, "%d", numeric_response) <= 0) {
         return ERROR;
     }
 
-    if(send_msg(socket, ascii_response, IRC_NR_LEN+1, IRC_MSG_LENGTH) <= 0){
+    if (send_msg(socket, ascii_response, IRC_NR_LEN + 1, IRC_MSG_LENGTH) <= 0) {
         return ERROR;
     }
 

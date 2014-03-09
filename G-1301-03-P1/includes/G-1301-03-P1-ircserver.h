@@ -15,14 +15,14 @@
 #ifndef ERROR
         #define ERROR -1
 #endif
-#define ERROR_BAD_SYNTAX -2
+#define ERROR_WRONG_SYNTAX -2
 #define ERROR_MAX_ARGS -3
 
 
 /*
  * Function: thread_routine
  * Parameters:
- *      arg: not used.
+ *      arg: Thread_handler.
  * Description:
  *      Take charge of a client, executing the commands received by them.
  * Return value:
@@ -74,7 +74,7 @@ void *irc_thread_routine(void *arg);
 void irc_exit_message();
 int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, int *n_strings);
 int irc_get_cmd_position(char* cmd);
-int exec_cmd (int number);
+int exec_cmd (int number, char *msg);
 int irc_send_numeric_response(int socket, int numeric_response);
 
 

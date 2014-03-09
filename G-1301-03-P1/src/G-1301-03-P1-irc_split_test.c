@@ -21,7 +21,7 @@ int main () {
             strcpy(comando, comandos_prueba[i]);
             printf("Comando %d: \'%s\'\n", i ,comando);
             printf("Posicion del primer caracter del comando (-1 indica mensaje sin comando, mal formado): %d\n", irc_get_cmd_position(comando));
-            if (irc_split_cmd(comando, args, &prefijo, &n_args)==ERROR_BAD_SYNTAX) {
+            if (irc_split_cmd(comando, args, &prefijo, &n_args)==ERROR_WRONG_SYNTAX) {
                 printf("Mala sintaxis\n");
                 continue;
             }
