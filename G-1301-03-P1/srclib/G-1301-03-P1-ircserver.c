@@ -50,11 +50,10 @@ void *irc_thread_routine(void *arg) {
                     }
                 }
             }
-
+            processed+=strlen(IRC_MSG_END);
             if (processed < received) {
                 command = strtok_r(NULL, IRC_MSG_END, &save_ptr);
             }
-
             processed += strlen(command);
         }
         
@@ -154,11 +153,11 @@ int irc_get_cmd_position(char* cmd) {
 int exec_cmd(int number, int socket, char *msg) {
     switch (number) {
         case PING:
-            return irc_ping_cmd(socket, msg);
+            irc_ping_cmd(socket, msg);
+            break;
         default:
             break;
     }
-
     return OK;
 }
 
@@ -180,8 +179,8 @@ int irc_send_numeric_response(int socket, int numeric_response) {
 int irc_ping_cmd(int socket, char *command){
 
     int prefix, n_strings, split_ret_value;
-    char target_array[MAX_CMD_ARGS + 2];
-    char response[strlen("PONG")+strlen(SERVER_NAME)+1];
+    char *target_array[MAX_CMD_ARGS + 2];
+    char response[strlen("PONG ")+strlen(SERVER_NAME)+1];
 
     split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
 
@@ -191,10 +190,8 @@ int irc_ping_cmd(int socket, char *command){
 
     strcpy(response, "PONG ");
     strcat(response, SERVER_NAME);
-
     if(send_msg(socket, response, strlen(response) ,IRC_MSG_LENGTH) == ERROR){
         return ERROR;
     }
-
     return OK;
 }
