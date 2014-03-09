@@ -36,9 +36,11 @@ void *irc_thread_routine(void *arg) {
     while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
 
         command = strtok_r(data, IRC_MSG_END, &save_ptr);
-        processed = strlen(command);
+        if (command != NULL){
+            processed = strlen(command);
+        }
 
-        while (processed <= received) {
+        while (processed <= received && command != NULL) {
             if ((command_pos = irc_get_cmd_position(command)) != ERROR_WRONG_SYNTAX) {
                 if ((command_num = parser(IRC_TOTAL_COMMANDS, command_names, command + command_pos)) == IRC_TOTAL_COMMANDS) {
                     if (irc_send_numeric_response(settings->socket, ERR_UNKNOWNCOMMAND) == ERROR) {
@@ -54,7 +56,10 @@ void *irc_thread_routine(void *arg) {
             if (processed < received) {
                 command = strtok_r(NULL, IRC_MSG_END, &save_ptr);
             }
-            processed += strlen(command);
+            if(command != NULL){
+                processed += strlen(command);
+            }
+            
         }
         
         free(data);
