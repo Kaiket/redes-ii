@@ -74,10 +74,10 @@ void *irc_thread_routine(void *arg);
 void irc_exit_message();
 int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, int *n_strings);
 int irc_get_cmd_position(char* cmd);
-int exec_cmd (int number, char *msg);
+int exec_cmd (int number, int socket, char *msg);
 int irc_send_numeric_response(int socket, int numeric_response);
 
 
-
+int irc_ping_cmd(int socket, char *command);
 
 #endif

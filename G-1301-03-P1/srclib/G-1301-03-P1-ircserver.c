@@ -12,14 +12,11 @@
 #include <errno.h>
 
 enum {
-    cmd1,
-    cmd2,
-    cmd3,
-    cmd4,
+    PING,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[4] = {"cmd1", "cmd2", "cmd3", "cmd4"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING"};
 
 /*
  * Function: thread_routine
@@ -48,7 +45,9 @@ void *irc_thread_routine(void *arg) {
                         syslog(LOG_ERR, "Server: Failed while sending numeric response to socket %d: %s", settings->socket, strerror(errno));
                     }
                 } else {
-                    exec_cmd(command_num, command);
+                    if (exec_cmd(command_num, settings->socket, command) == ERROR) {
+                        syslog(LOG_ERR, "Server: Failed while executing command: %s. Received from socket %d", command, settings->socket);
+                    }
                 }
             }
 
@@ -154,16 +153,10 @@ int irc_get_cmd_position(char* cmd) {
     return ERROR_WRONG_SYNTAX;
 }
 
-int exec_cmd(int number, char *msg) {
+int exec_cmd(int number, int socket, char *msg) {
     switch (number) {
-        case 1:
-            break;
-        case 2:
-            break;
-        case 3:
-            break;
-        case 4:
-            break;
+        case PING:
+            return irc_ping_cmd(socket, msg);
         default:
             break;
     }
@@ -182,6 +175,11 @@ int irc_send_numeric_response(int socket, int numeric_response) {
     if (send_msg(socket, ascii_response, IRC_NR_LEN + 1, IRC_MSG_LENGTH) <= 0) {
         return ERROR;
     }
+
+    return OK;
+}
+
+int irc_ping_cmd(int socket, char *command){
 
     return OK;
 }
