@@ -91,7 +91,7 @@ void irc_exit_message() {
  *  
  *      On success, OK is returned.
  *      ERROR is returned if arguments are incorrect
- *      ERROR_BAD_SYNTAX is returned if the syntax of the command syntax doesn't fit RFC specs (i.e: exceeds number of arguments)
+ *      ERROR_WRONG_SYNTAX is returned if the syntax of the command syntax doesn't fit RFC specs (i.e: exceeds number of arguments)
  */
 int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, int *n_strings) {
     int arg_start = 0, prefix_flag = 1, cmd_length, i=0;
@@ -178,6 +178,23 @@ int irc_send_numeric_response(int socket, int numeric_response) {
 }
 
 int irc_ping_cmd(int socket, char *command){
+
+    int prefix, n_strings, split_ret_value;
+    char target_array[MAX_CMD_ARGS + 2];
+    char response[strlen("PONG")+strlen(SERVER_NAME)+1];
+
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+
+    strcpy(response, "PONG ");
+    strcat(response, SERVER_NAME);
+
+    if(send_msg(socket, response, strlen(response) ,IRC_MSG_LENGTH) == ERROR){
+        return ERROR;
+    }
 
     return OK;
 }
