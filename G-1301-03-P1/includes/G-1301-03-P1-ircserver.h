@@ -3,6 +3,7 @@
 
 #include <limits.h>
 #include "uthash.h"
+#include "utlist.h"
 
 #define SERVER_NAME "Guillermo_y_Enrique_IRC_SERVER_V1.0"
 #define SERVER_LOG_IDENT "IRC_SERVER"
@@ -23,12 +24,15 @@
 
 #define OPER_PASS "somepass"
 
-typedef struct {
+typedef struct t {
     char nick[IRC_MAX_NICK_LENGTH + 1];
-    UT_hash_handle hh;
-} ban, invite;
+    struct t *next;
+} ban, invite, active_nicks;
 
-struct channel; /*forward declaration*/
+typedef struct ch {
+    char *ch_name;
+    struct ch *next;
+} channel_lst;
 
 typedef struct {
     int socket;
@@ -39,8 +43,7 @@ typedef struct {
     char* real_name;
     char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
     char already_in_server; /*if a particular instance is already in the hash table of clients*/
-    struct channel* channels_hash_t;
-    /*¿semaforos?*/
+    channel_lst* channels_llist;
     UT_hash_handle hh; 
 } user;
 
@@ -72,10 +75,9 @@ typedef struct {
     unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/  
     unsigned int users_number; 
     unsigned int users_max; /*if flag l is 1*/
-    user* users_hash_t;
-    user* operators_hash_t;
-    invite* invited_hash_t; /**/
-    /*¿semaforos?*/
+    active_nicks* users_llist;
+    active_nicks* operators_llist;
+    invite* invited_llist; /*linked list of nicks invited to channel*/
     UT_hash_handle hh;
 } channel;
 

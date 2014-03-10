@@ -3,6 +3,7 @@
 #include "G-1301-03-P1-ircserver.h"
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-irc_errors.h"
+#include "G-1301-03-P1-irc_utility_functions.h"
 #include "G-1301-03-P1-parser.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,10 +13,10 @@
 #include <errno.h>
 
 struct {
-    channel* channels_hash_t;
+    channel* channels_hasht;
     /*¿semaforos?*/
-    user* users_hash_t;
-    ban* banned_users_hash_t;
+    user* users_hasht;
+    ban* banned_users_llist;
 } server_data;
 
 enum {
@@ -30,9 +31,9 @@ char *command_names[IRC_TOTAL_COMMANDS] = {"PING"};
  * This function MUST be used before launching clients, as uthash library needs hash tables to point to NULL the first time we want to add an item.
  */
 void irc_server_data_init() {
-    server_data.banned_users_hash_t=NULL;
-    server_data.channels_hash_t=NULL;
-    server_data.users_hash_t=NULL;
+    server_data.banned_users_llist=NULL;
+    server_data.channels_hasht=NULL;
+    server_data.users_hasht=NULL;
     /*semaforos*/
 }
 
@@ -63,7 +64,7 @@ void *irc_thread_routine(void *arg) {
     my_user->server_name=NULL;
     my_user->real_name=NULL;
     my_user->reg_modes=0;
-    my_user->channels_hash_t=NULL;
+    my_user->channels_llist=NULL;
     my_user->already_in_server=0;
 
     while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
@@ -305,31 +306,33 @@ int irc_nick_cmd (user* client, char* command) {
     /*up semaphores if needed*/
 
 
-int is_letter_char(char c) {
-    if ((c>='A' && c<='Z') || (c>='a' && c<='z')) return OK;
-    return ERROR;
+/*
+ * hash tables manipulation functions
+ */
+void user_hasht_add (user *item) {
+    HASH_ADD_STR(server_data.users_hasht, nick, item);
 }
 
-int is_special_char(char c) {
-    if ((c>=0x5B && c<=0x60) || (c>=0x7B && c<=0x7D)) return OK;
-    return ERROR;
+void user_hasht_remove(user *item) {
+    HASH_DEL(server_data.users_hasht, item);
 }
 
-int is_digit_char(char c) {
-    if ((c>=0x30) && (c<=0x39)) return OK;
-    return ERROR;
+user* user_hasht_find(char key[IRC_MAX_NICK_LENGTH + 1]) {
+    user* found=NULL;
+    HASH_FIND_STR(server_data.users_hasht, key, found);
+    return found;
 }
 
-int is_valid_nick(char* nick) {
-    int i=1;
-    
-    if (!is_letter_char(nick[0]) && !is_special_char(nick[0])) return ERROR;
-    
-    while (nick[i]!='\0') {
-        if (i>IRC_MAX_NICK_LENGTH) return ERROR;
-        if (!is_letter_char(nick[i]) && !is_special_char(nick[i]) && !is_digit_char(nick[i]) && (nick[i]!='-')) 
-            return ERROR;
-        ++i;
-    }
-    return OK;
+void channel_hasht_add (channel *item) {
+    HASH_ADD_KEYPTR(hh, server_data.channels_hasht, item->name, strlen(item->name), item);
+}
+
+void channel_hasht_remove(channel *item) {
+    HASH_DEL(server_data.channels_hasht, item);
+}
+
+channel* channel_hasht_find(char *key) {
+    channel* found=NULL;
+    HASH_FIND_STR(server_data.channels_hasht, key, found);
+    return found;
 }
