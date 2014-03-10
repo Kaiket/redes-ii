@@ -258,6 +258,20 @@ int irc_nick_cmd (user* client, char* command) {
     int prefix, n_strings, splot_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
     
+    /*split arguments*/
+    
+    /*check argument number (enough?)*/
+    
+    /*check arguments format (correct?)*/
+    
+    /*check user modes (can i do this?)*/
+    
+    /*down semaphores if needed*/
+    
+    /*do something*/
+    
+    /*up semaphores if needed*/
+    
     return OK;
 }
 
