@@ -4,7 +4,6 @@
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-irc_errors.h"
 #include "G-1301-03-P1-parser.h"
-#include "../includes/uthash.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
@@ -12,77 +11,11 @@
 #include <pthread.h>
 #include <errno.h>
 
-typedef struct {
-    char* name;
-    UT_hash_handle hh;
-} ban, invite;
-
-typedef struct {
-    int socket;
-    char nick[MAX_NICK_LENGTH + 1]; /*maximum nick length + \0*/
-    char* user_name;
-    char* host_name;
-    char* server_name;
-    char* real_name;
-    char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
+struct {
     channel* channels_hash_t;
     /*¿semaforos?*/
-    UT_hash_handle hh; 
-} user;
-
-/*  USER MODES
-           a - user is flagged as away;
-           i - marks a users as invisible;
-           w - user receives wallops;
-           r - restricted user connection;
-           o - operator flag;
-           O - local operator flag;
-           s - marks a user for receipt of server notices.
- */
-
-typedef struct {
-    char* name;
-    char* topic;
-    char* pass;
-    unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/  
-    unsigned int users_number; 
-    unsigned int users_max; /*if flag l is 1*/
     user* users_hash_t;
-    user* operators_hash_t;
-    invite* invited_hash_t; /**/
-    /*¿semaforos?*/
-    UT_hash_handle hh;
-} channel;
-
-/*      CHANNEL MODES
- *      O - give "channel creator" status;
-        o - give/take channel operator privilege;
-        v - give/take the voice privilege;
-
-        a - toggle the anonymous channel flag;
-        i - toggle the invite-only channel flag;
-        m - toggle the moderated channel;
-        n - toggle the no messages to channel from clients on the
-            outside;
-        q - toggle the quiet channel flag;
-        p - toggle the private channel flag;
-        s - toggle the secret channel flag;
-        r - toggle the server reop channel flag;
-        t - toggle the topic settable by channel operator only flag;
-
-        k - set/remove the channel key (password);
-        l - set/remove the user limit to channel;
-
-        b - set/remove ban mask to keep users out;
-        e - set/remove an exception mask to override a ban mask;
-        I - set/remove an invitation mask to automatically override
-            the invite-only flag;*/
-
-struct {
-    channel* channels_hash_t = NULL;
-    /*¿semaforos?*/
-    user* users_hash_t = NULL;
-    ban* banned_users_hash_t = NULL;
+    ban* banned_users_hash_t;
 } server_data;
 
 enum {
@@ -91,6 +24,17 @@ enum {
 } command_enum;
 
 char *command_names[IRC_TOTAL_COMMANDS] = {"PING"};
+
+/*
+ * Initializes (to NULL) server hash tables;
+ * This function MUST be used before launching clients, as uthash library needs hash tables to point to NULL the first time we want to add an item.
+ */
+void irc_server_data_init() {
+    server_data.banned_users_hash_t=NULL;
+    server_data.channels_hash_t=NULL;
+    server_data.users_hash_t=NULL;
+    /*semaforos*/
+}
 
 /*
  * Function: thread_routine
@@ -104,9 +48,12 @@ void *irc_thread_routine(void *arg) {
     void *data;
     Thread_handler *settings = (Thread_handler *) arg;
     user* my_user=NULL;
+    
+    syslog(LOG_NOTICE, "Server: New thread created for socket %d\n", settings->socket);
 
     if (!(my_user=(user*)malloc(sizeof(user)))) {
         send_msg(settings->socket, "Server is full", strlen("Server is full") + 1, IRC_MSG_LENGTH);
+        syslog(LOG_NOTICE, "Server: Terminating thread for socket %d due to malloc error while creating user struct\n", settings->socket);
         pthread_exit(NULL);
     }
     my_user->socket=settings->socket;
@@ -117,8 +64,6 @@ void *irc_thread_routine(void *arg) {
     my_user->real_name=NULL;
     my_user->reg_modes=0;
     my_user->channels_hash_t=NULL;
-    
-    syslog(LOG_NOTICE, "Server: New thread created for socket %d\n", settings->socket);
 
     while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
 
@@ -130,7 +75,7 @@ void *irc_thread_routine(void *arg) {
         while (processed <= received && command != NULL) {
             if ((command_pos = irc_get_cmd_position(command)) != ERROR_WRONG_SYNTAX) {
                 if ((command_num = parser(IRC_TOTAL_COMMANDS, command_names, command + command_pos)) == IRC_TOTAL_COMMANDS) {
-                    if (irc_send_numeric_response(settings->socket, ERR_UNKNOWNCOMMAND) == ERROR) {
+                    if (irc_send_numeric_response(my_user, ERR_UNKNOWNCOMMAND) == ERROR) {
                         syslog(LOG_ERR, "Server: Failed while sending numeric response to socket %d: %s", settings->socket, strerror(errno));
                     }
                 } else {
@@ -223,6 +168,9 @@ int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, 
 }
 
 /*
+ * Function: irc_get_cmd_position
+ * 
+ * Implementation comments:
  * returns the position in the array of the first character of the commmand (ignoring prefix and blanks)
  * return ERROR_BAD_SYNTAX if the string is invalid (contains a prefix and a last argument without a command)
  */
@@ -242,6 +190,11 @@ int irc_get_cmd_position(char* cmd) {
     return ERROR_WRONG_SYNTAX;
 }
 
+/*
+ * Function: exec_cmd
+ * Implementation comments:
+ * 
+ */
 int exec_cmd(int number, user* client, char *msg) {
     switch (number) {
         case PING:
@@ -253,6 +206,12 @@ int exec_cmd(int number, user* client, char *msg) {
     return OK;
 }
 
+/*
+ * Function: irc_send_numeric_response
+ * Implementation comments:
+ * 
+ *  Sends a numeric response to the user passed as argument (to his socket) 
+ */
 int irc_send_numeric_response(user* client, int numeric_response) {
 
     char ascii_response[IRC_NR_LEN + 1];
@@ -315,4 +274,18 @@ int is_special_char(char c) {
 int is_digit_char(char c) {
     if ((c>=0x30) && (c<=0x39)) return OK;
     return ERROR;
+}
+
+int is_valid_nick(char* nick) {
+    int i=1;
+    
+    if (!is_letter_char(nick[0]) && !is_special_char(nick[0])) return ERROR;
+    
+    while (nick[i]!='\0') {
+        if (i>IRC_MAX_NICK_LENGTH) return ERROR;
+        if (!is_letter_char(nick[i]) && !is_special_char(nick[i]) && !is_digit_char(nick[i]) && (nick[i]!='-')) 
+            return ERROR;
+        ++i;
+    }
+    return OK;
 }

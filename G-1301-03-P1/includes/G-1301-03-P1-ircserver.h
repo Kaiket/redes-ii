@@ -2,6 +2,7 @@
 #define __IRCSERVER_H
 
 #include <limits.h>
+#include "uthash.h"
 
 #define SERVER_NAME "Guillermo_y_Enrique_IRC_SERVER_V1.0"
 #define SERVER_LOG_IDENT "IRC_SERVER"
@@ -22,6 +23,36 @@
 
 #define OPER_PASS "somepass"
 
+typedef struct {
+    char nick[IRC_MAX_NICK_LENGTH + 1];
+    UT_hash_handle hh;
+} ban, invite;
+
+struct channel; /*forward declaration*/
+
+typedef struct {
+    int socket;
+    char nick[IRC_MAX_NICK_LENGTH + 1]; /*maximum nick length + \0*/
+    char* user_name;
+    char* host_name;
+    char* server_name;
+    char* real_name;
+    char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
+    struct channel* channels_hash_t;
+    /*¿semaforos?*/
+    UT_hash_handle hh; 
+} user;
+
+/*  USER MODES
+           a - user is flagged as away;
+           i - marks a users as invisible;
+           w - user receives wallops;
+           r - restricted user connection;
+           o - operator flag;
+           O - local operator flag;
+           s - marks a user for receipt of server notices.
+ */
+
 /*USER MODES FLAGS*/
 #define US_MODE_a 1
 #define US_MODE_w 2
@@ -32,6 +63,44 @@
 #define US_MODE_s 64
 #define USER_REGISTERED 128
 #define US_MODE_default (US_MODE_i | US_MODE_s)
+
+typedef struct {
+    char* name;
+    char* topic;
+    char* pass;
+    unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/  
+    unsigned int users_number; 
+    unsigned int users_max; /*if flag l is 1*/
+    user* users_hash_t;
+    user* operators_hash_t;
+    invite* invited_hash_t; /**/
+    /*¿semaforos?*/
+    UT_hash_handle hh;
+} channel;
+
+/*      CHANNEL MODES
+ *      O - give "channel creator" status;
+        o - give/take channel operator privilege;
+        v - give/take the voice privilege;
+
+        a - toggle the anonymous channel flag;
+        i - toggle the invite-only channel flag;
+        m - toggle the moderated channel;
+        n - toggle the no messages to channel from clients on the
+            outside;
+        q - toggle the quiet channel flag;
+        p - toggle the private channel flag;
+        s - toggle the secret channel flag;
+        r - toggle the server reop channel flag;
+        t - toggle the topic settable by channel operator only flag;
+
+        k - set/remove the channel key (password);
+        l - set/remove the user limit to channel;
+
+        b - set/remove ban mask to keep users out;
+        e - set/remove an exception mask to override a ban mask;
+        I - set/remove an invitation mask to automatically override
+            the invite-only flag;*/
 
 /*CHANNEL MODES FLAGS*/
 #define CH_MODE_I 1
@@ -53,6 +122,16 @@
 #define CH_MODE_O 65536
 #define CH_MODE_default (CH_MODE_O | CH_MODE_o | CH_MODE_n | CH_MODE_t )
 
+/*
+ * Function: irc_server_data_init
+ * Parameters:
+ * 
+ * Description:
+ *      Initializes server_data global variable, creating semaphores and setting hash tables to NULL
+ * Return value:
+ *      
+ */
+void irc_server_data_init();
 
 
 /*
@@ -110,10 +189,11 @@ void *irc_thread_routine(void *arg);
 void irc_exit_message();
 int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, int *n_strings);
 int irc_get_cmd_position(char* cmd);
-int exec_cmd (int number, int socket, char *msg);
-int irc_send_numeric_response(int socket, int numeric_response);
+int exec_cmd (int number, user* client, char *msg);
+int irc_send_numeric_response(user* client, int numeric_response);
 
 
-int irc_ping_cmd(int socket, char *command);
+int irc_ping_cmd(user* client, char *command);
+int irc_nick_cmd(user* client, char* command);
 
 #endif

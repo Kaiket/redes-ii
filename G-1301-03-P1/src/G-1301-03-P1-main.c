@@ -35,6 +35,9 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
+    /*Initializes IRC server data*/
+    irc_server_data_init();
+    
     /*Accepts connexions and takes charge of them*/
     while (1) {
         client_socket = accept_connections(socket);
