@@ -291,6 +291,13 @@ int irc_nick_cmd (user* client, char* command) {
     return OK;
 }
 
+/*
+ * WHO CMD
+ */
+int irc_who_cmd(user *client, char *command){
+
+}
+
     /*split arguments*/
     
     /*check argument number (enough?)*/

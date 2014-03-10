@@ -196,7 +196,8 @@ int exec_cmd (int number, user* client, char *msg);
 int irc_send_numeric_response(user* client, int numeric_response);
 
 
-int irc_ping_cmd(user* client, char *command);
-int irc_nick_cmd(user* client, char* command);
+int irc_ping_cmd(user *client, char *command);
+int irc_nick_cmd(user *client, char *command);
+int irc_who_cmd(user *client, char *command);
 
 #endif
