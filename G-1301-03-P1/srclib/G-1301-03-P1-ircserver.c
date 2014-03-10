@@ -64,6 +64,7 @@ void *irc_thread_routine(void *arg) {
     my_user->real_name=NULL;
     my_user->reg_modes=0;
     my_user->channels_hash_t=NULL;
+    my_user->already_in_server=0;
 
     while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
 
@@ -255,9 +256,40 @@ int irc_ping_cmd(user* client, char *command){
  * NICK CMD
  */
 int irc_nick_cmd (user* client, char* command) {
-    int prefix, n_strings, splot_ret_value;
+    int prefix, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
     
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    /*check argument number*/
+    if ((split_ret_value-prefix)<2)
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS);
+    
+    /*check arguments format*/
+    if (!is_valid_nick(target_array[prefix+1]))
+        irc_send_numeric_response(client, ERR_ERRONEUSNICKNAME);
+    
+    if (!strcmp(client->nick, target_array[prefix+1])) /*if same nick, nothing to do*/
+        return OK;
+    
+    /*check user modes*/
+    if ((client->reg_modes & US_MODE_r))
+        irc_send_numeric_response(client, ERR_RESTRICTED);
+    
+    /*down server semaphores*/
+    /*if nick exist, collision*/
+   
+    
+    /*up server semaphores*/
+    
+    return OK;
+}
+
     /*split arguments*/
     
     /*check argument number (enough?)*/
@@ -271,9 +303,7 @@ int irc_nick_cmd (user* client, char* command) {
     /*do something*/
     
     /*up semaphores if needed*/
-    
-    return OK;
-}
+
 
 int is_letter_char(char c) {
     if ((c>='A' && c<='Z') || (c>='a' && c<='z')) return OK;

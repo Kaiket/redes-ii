@@ -38,6 +38,7 @@ typedef struct {
     char* server_name;
     char* real_name;
     char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
+    char already_in_server; /*if a particular instance is already in the hash table of clients*/
     struct channel* channels_hash_t;
     /*¿semaforos?*/
     UT_hash_handle hh; 
