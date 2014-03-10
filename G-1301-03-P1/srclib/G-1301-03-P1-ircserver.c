@@ -4,12 +4,86 @@
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-irc_errors.h"
 #include "G-1301-03-P1-parser.h"
+#include "../includes/uthash.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
+
+typedef struct {
+    char* name;
+    UT_hash_handle hh;
+} ban, invite;
+
+typedef struct {
+    int socket;
+    char nick[MAX_NICK_LENGTH + 1]; /*maximum nick length + \0*/
+    char* user_name;
+    char* host_name;
+    char* server_name;
+    char* real_name;
+    char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
+    channel* channels_hash_t;
+    /*¿semaforos?*/
+    UT_hash_handle hh; 
+} user;
+
+/*  USER MODES
+           a - user is flagged as away;
+           i - marks a users as invisible;
+           w - user receives wallops;
+           r - restricted user connection;
+           o - operator flag;
+           O - local operator flag;
+           s - marks a user for receipt of server notices.
+ */
+
+typedef struct {
+    char* name;
+    char* topic;
+    char* pass;
+    unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/  
+    unsigned int users_number; 
+    unsigned int users_max; /*if flag l is 1*/
+    user* users_hash_t;
+    user* operators_hash_t;
+    invite* invited_hash_t; /**/
+    /*¿semaforos?*/
+    UT_hash_handle hh;
+} channel;
+
+/*      CHANNEL MODES
+ *      O - give "channel creator" status;
+        o - give/take channel operator privilege;
+        v - give/take the voice privilege;
+
+        a - toggle the anonymous channel flag;
+        i - toggle the invite-only channel flag;
+        m - toggle the moderated channel;
+        n - toggle the no messages to channel from clients on the
+            outside;
+        q - toggle the quiet channel flag;
+        p - toggle the private channel flag;
+        s - toggle the secret channel flag;
+        r - toggle the server reop channel flag;
+        t - toggle the topic settable by channel operator only flag;
+
+        k - set/remove the channel key (password);
+        l - set/remove the user limit to channel;
+
+        b - set/remove ban mask to keep users out;
+        e - set/remove an exception mask to override a ban mask;
+        I - set/remove an invitation mask to automatically override
+            the invite-only flag;*/
+
+struct {
+    channel* channels_hash_t = NULL;
+    /*¿semaforos?*/
+    user* users_hash_t = NULL;
+    ban* banned_users_hash_t = NULL;
+} server_data;
 
 enum {
     PING,
@@ -29,8 +103,21 @@ void *irc_thread_routine(void *arg) {
     char *command, *save_ptr;
     void *data;
     Thread_handler *settings = (Thread_handler *) arg;
+    user* my_user=NULL;
 
-
+    if (!(my_user=(user*)malloc(sizeof(user)))) {
+        send_msg(settings->socket, "Server is full", strlen("Server is full") + 1, IRC_MSG_LENGTH);
+        pthread_exit(NULL);
+    }
+    my_user->socket=settings->socket;
+    strcpy(my_user->nick, "");
+    my_user->user_name=NULL;
+    my_user->host_name=NULL;
+    my_user->server_name=NULL;
+    my_user->real_name=NULL;
+    my_user->reg_modes=0;
+    my_user->channels_hash_t=NULL;
+    
     syslog(LOG_NOTICE, "Server: New thread created for socket %d\n", settings->socket);
 
     while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
@@ -47,7 +134,7 @@ void *irc_thread_routine(void *arg) {
                         syslog(LOG_ERR, "Server: Failed while sending numeric response to socket %d: %s", settings->socket, strerror(errno));
                     }
                 } else {
-                    if (exec_cmd(command_num, settings->socket, command) == ERROR) {
+                    if (exec_cmd(command_num, my_user, command) == ERROR) {
                         syslog(LOG_ERR, "Server: Failed while executing command: %s. Received from socket %d", command, settings->socket);
                     }
                 }
@@ -155,10 +242,10 @@ int irc_get_cmd_position(char* cmd) {
     return ERROR_WRONG_SYNTAX;
 }
 
-int exec_cmd(int number, int socket, char *msg) {
+int exec_cmd(int number, user* client, char *msg) {
     switch (number) {
         case PING:
-            irc_ping_cmd(socket, msg);
+            irc_ping_cmd(client, msg);
             break;
         default:
             break;
@@ -166,7 +253,7 @@ int exec_cmd(int number, int socket, char *msg) {
     return OK;
 }
 
-int irc_send_numeric_response(int socket, int numeric_response) {
+int irc_send_numeric_response(user* client, int numeric_response) {
 
     char ascii_response[IRC_NR_LEN + 1];
 
@@ -174,14 +261,18 @@ int irc_send_numeric_response(int socket, int numeric_response) {
         return ERROR;
     }
 
-    if (send_msg(socket, ascii_response, IRC_NR_LEN + 1, IRC_MSG_LENGTH) <= 0) {
+    if (send_msg(client->socket, ascii_response, IRC_NR_LEN + 1, IRC_MSG_LENGTH) <= 0) {
         return ERROR;
     }
 
     return OK;
 }
 
-int irc_ping_cmd(int socket, char *command){
+
+/*
+ * PING CMD
+ */
+int irc_ping_cmd(user* client, char *command){
 
     int prefix, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
@@ -195,8 +286,33 @@ int irc_ping_cmd(int socket, char *command){
 
     strcpy(response, "PONG ");
     strcat(response, SERVER_NAME);
-    if(send_msg(socket, response, strlen(response) ,IRC_MSG_LENGTH) == ERROR){
+    if(send_msg(client->socket, response, strlen(response) ,IRC_MSG_LENGTH) == ERROR){
         return ERROR;
     }
     return OK;
+}
+
+/*
+ * NICK CMD
+ */
+int irc_nick_cmd (user* client, char* command) {
+    int prefix, n_strings, splot_ret_value;
+    char *target_array[MAX_CMD_ARGS + 2];
+    
+    return OK;
+}
+
+int is_letter_char(char c) {
+    if ((c>='A' && c<='Z') || (c>='a' && c<='z')) return OK;
+    return ERROR;
+}
+
+int is_special_char(char c) {
+    if ((c>=0x5B && c<=0x60) || (c>=0x7B && c<=0x7D)) return OK;
+    return ERROR;
+}
+
+int is_digit_char(char c) {
+    if ((c>=0x30) && (c<=0x39)) return OK;
+    return ERROR;
 }

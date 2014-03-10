@@ -13,11 +13,46 @@
 #define IRC_PREFIX ':'
 #define IRC_MSG_END "\r\n"
 #define IRC_NR_LEN 3
+#define IRC_MAX_NICK_LENGTH 9
 #ifndef ERROR
         #define ERROR -1
 #endif
 #define ERROR_WRONG_SYNTAX -2
 #define ERROR_MAX_ARGS -3
+
+#define OPER_PASS "somepass"
+
+/*USER MODES FLAGS*/
+#define US_MODE_a 1
+#define US_MODE_w 2
+#define US_MODE_i 4
+#define US_MODE_r 8
+#define US_MODE_o 16
+#define US_MODE_O 32
+#define US_MODE_s 64
+#define USER_REGISTERED 128
+#define US_MODE_default (US_MODE_i | US_MODE_s)
+
+/*CHANNEL MODES FLAGS*/
+#define CH_MODE_I 1
+#define CH_MODE_e 2
+#define CH_MODE_b 4
+#define CH_MODE_l 8
+#define CH_MODE_k 16
+#define CH_MODE_t 32
+#define CH_MODE_r 64
+#define CH_MODE_s 128
+#define CH_MODE_p 254
+#define CH_MODE_q 512
+#define CH_MODE_n 1024
+#define CH_MODE_m 2048
+#define CH_MODE_i 4096
+#define CH_MODE_a 8192
+#define CH_MODE_v 16384
+#define CH_MODE_o 32768
+#define CH_MODE_O 65536
+#define CH_MODE_default (CH_MODE_O | CH_MODE_o | CH_MODE_n | CH_MODE_t )
+
 
 
 /*
