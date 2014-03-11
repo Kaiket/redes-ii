@@ -607,6 +607,7 @@ int irc_who_cmd(user *client, char *command){
             }
         }
 
+        /**SEMAPHORE_HERE**/
         irc_send_numeric_response(client, RPL_ENDOFWHO, ":End of /WHO list.");
         param = strtok_r(NULL, ",", &saveptr);
     }
