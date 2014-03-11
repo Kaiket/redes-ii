@@ -549,6 +549,71 @@ int irc_user_cmd (user* client, char* command) {
  */
 int irc_who_cmd(user *client, char *command){
 
+    int prefix=0, n_strings, split_ret;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *param, *saveptr, *details;
+    user *usr_found;
+    channel *ch_found;
+    active_nicks* nick;
+
+    split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    if ((n_strings-prefix)<2) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Not enough parameters");
+        return OK;
+    }
+
+    param = strtok_r(target_array[prefix+1], ",", &saveptr);
+
+    while(param){
+        /**SEMAPHORE_HERE**/
+        ch_found = channel_hasht_find(param);
+
+        if(ch_found){
+            LL_FOREACH(ch_found->operators_llist, nick){
+                usr_found = user_hasht_find(nick->nick);
+                if (usr_found) {
+                    if(!user_mode_i(usr_found->reg_modes)){
+                        details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 4 + strlen(usr_found->real_name)+1);
+                        if(!details) return ERROR;
+                        sprintf(details, "%s ~%s - - %s H@ %s", param, 
+                                                                   usr_found->user_name,  
+                                                                   usr_found->nick,
+                                                                   usr_found->real_name);
+                        irc_send_numeric_response(client, RPL_WHOREPLY, details);
+                        free(details);
+                    }
+                }
+            }
+
+            LL_FOREACH(ch_found->users_llist, nick){
+                usr_found = user_hasht_find(nick->nick);
+                if (usr_found) {
+                    if(!user_mode_i(usr_found->reg_modes)){
+                        details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 3 + strlen(usr_found->real_name)+1);
+                        if(!details) return ERROR;
+                        sprintf(details, "%s ~%s - - %s H %s", param, 
+                                                                   usr_found->user_name, 
+                                                                   usr_found->nick,
+                                                                   usr_found->real_name);
+                        irc_send_numeric_response(client, RPL_WHOREPLY, details);
+                        free(details);
+                    }
+                }
+            }
+        }
+
+        irc_send_numeric_response(client, RPL_ENDOFWHO, ":End of /WHO list.");
+        param = strtok_r(NULL, ",", &saveptr);
+    }
+
+    return OK;
+    
+
 }
 
     /*split arguments*/
