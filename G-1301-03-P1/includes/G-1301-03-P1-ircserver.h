@@ -6,6 +6,11 @@
 #include "utlist.h"
 
 #define SERVER_NAME "irc_server_V1.0"
+#define WELCOME_MSG ":Welcome to this IRC server %s"
+#define HOST_MSG ":Your host is irc_server_V1.0, running version 1.0"
+#define DATE_MSG ":This server was created in February 2014"
+#define MYINFO_MSG "irc_server_V1.0 1.0 sOorwia IeblktrspqnmiavoO"
+
 #define SERVER_NAME_LENGTH 15
 #define SERVER_LOG_IDENT "IRC_SERVER"
 #define SERVER_MAX_CONNECTIONS INT_MAX
@@ -17,6 +22,7 @@
 #define IRC_MSG_END "\r\n"
 #define IRC_NR_LEN 3
 #define IRC_MAX_NICK_LENGTH 9
+#define IRC_MAX_PASS_LENGTH 23
 #ifndef ERROR
         #define ERROR -1
 #endif
@@ -67,7 +73,7 @@ typedef struct {
 #define US_MODE_O 32
 #define US_MODE_s 64
 #define USER_REGISTERED 128
-#define US_MODE_default (US_MODE_i | US_MODE_s)
+#define US_MODE_default (US_MODE_i | US_MODE_s | US_MODE_w)
 
 typedef struct {
     char* name;
@@ -125,6 +131,14 @@ typedef struct {
 #define CH_MODE_o 32768
 #define CH_MODE_O 65536
 #define CH_MODE_default (CH_MODE_O | CH_MODE_o | CH_MODE_n | CH_MODE_t )
+
+/*server data global variable*/
+struct {
+    channel* channels_hasht;
+    /*¿semaforos?*/
+    user* users_hasht;
+    ban* banned_users_llist;
+} server_data;
 
 /*
  * Function: irc_server_data_init
@@ -200,6 +214,7 @@ int irc_send_numeric_response(user* client, int numeric_response, char *details)
 int irc_ping_cmd(user *client, char *command);
 int irc_nick_cmd(user *client, char *command);
 int irc_pass_cmd(user *client, char *command);
+int irc_user_cmd (user* client, char* command);
 int irc_who_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
 

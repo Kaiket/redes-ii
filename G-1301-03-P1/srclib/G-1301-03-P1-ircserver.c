@@ -18,12 +18,13 @@ enum {
     PING,
     NICK,
     PASS,
+    USER,
     WHO,
     SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "WHO" , "SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "WHO" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -208,6 +209,9 @@ int exec_cmd(int number, user* client, char *msg) {
         case PASS:
             ret=irc_pass_cmd(client, msg);
             break;
+        case USER:
+            ret=irc_user_cmd(client, msg);
+            break;
         case SQUIT:
             ret=irc_squit_cmd(client, msg);
             break;
@@ -279,9 +283,10 @@ int irc_ping_cmd(user* client, char *command){
 int irc_nick_cmd (user* client, char* command) {
     int prefix=0, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2], *new_nick;
+    char success_msg[1+IRC_MAX_NICK_LENGTH*2+strlen("NICK")+2+strlen(IRC_MSG_END)+1];
+    char welcome_msg[strlen(WELCOME_MSG) + IRC_MAX_NICK_LENGTH + 1];
     channel_lst* elt;
     channel* chan;
-    char success_msg[1+IRC_MAX_NICK_LENGTH*2+strlen("NICK")+2+strlen(IRC_MSG_END)+1];
     
     /*split arguments*/
     split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
@@ -314,15 +319,18 @@ int irc_nick_cmd (user* client, char* command) {
     if (user_hasht_find(new_nick)!=NULL) {
         irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ":Nickname already in use");
     }
-    if (client->already_in_server==0 || !user_registered_flag(client->reg_modes)) {/*if not already recongnized by the server, we can just change the nick cause he is not in any channel*/
+    else if (client->already_in_server==0 || !user_registered_flag(client->reg_modes)) {/*if not already recongnized by the server, we can just change the nick cause he is not in any channel*/
         strncpy(client->nick, new_nick, strlen(new_nick)+1);
         user_hasht_add(client);
         client->already_in_server=1;
         if (client->user_name!=NULL) { /*if already has a user name (command USER succesful) we register him*/
             client->reg_modes=(client->reg_modes | USER_REGISTERED);
+            sprintf(welcome_msg,WELCOME_MSG,client->user_name);
+            irc_send_numeric_response(client, RPL_WELCOME, welcome_msg);
+            irc_send_numeric_response(client, RPL_YOURHOST, HOST_MSG);
+            irc_send_numeric_response(client, RPL_CREATED, DATE_MSG);
+            irc_send_numeric_response(client, RPL_MYINFO, MYINFO_MSG);
         }
-        sprintf(success_msg, ":%s NICK %s%s", client->nick, new_nick, IRC_MSG_END);
-        send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
     }
     else { /*in server and registered, seek every channel he is in and change the nick in the list of users or operators*/
         LL_FOREACH(client->channels_llist , elt) {
@@ -335,7 +343,9 @@ int irc_nick_cmd (user* client, char* command) {
             }
         }
         sprintf(success_msg, ":%s NICK %s%s", client->nick, new_nick, IRC_MSG_END);
+        user_hasht_remove(client);
         strncpy(client->nick, new_nick, strlen(new_nick)+1);
+        user_hasht_add(client);
         send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
     }    
     
@@ -347,6 +357,10 @@ int irc_nick_cmd (user* client, char* command) {
 int irc_squit_cmd (user* client, char* command) {
     /*developing version, automatically shuts down the server*/
     exit(0);
+}
+
+int irc_privmsg_cmd (user* client, char* command) {
+    
 }
 
 /*
@@ -369,12 +383,69 @@ int irc_pass_cmd (user* client, char* command) {
         return OK;
     }
     
+    /***********************************************************************************************down server read sem*/
+    
     if (user_registered_flag(client->reg_modes)) {
         irc_send_numeric_response(client, ERR_ALREADYREGISTRED, ":You can't register twice!");
     }
     
+    /***********************************************************************************************up server read sem*/
+    
     return OK;
 }
+
+int irc_user_cmd (user* client, char* command) {
+    int prefix=0, n_strings, split_ret_value, requested_modes=0;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *user, *mode, *realname, welcome_msg[strlen(WELCOME_MSG) + IRC_MAX_NICK_LENGTH + 1];
+    
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    /*check argument number*/
+    if ((n_strings-prefix)<4) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        return OK;
+    }
+    user=target_array[prefix+1];
+    mode=target_array[prefix+2];
+    realname=target_array[prefix+4];
+   
+    /***********************************************************************************************down server write sem*/
+    if (user_registered_flag(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_ALREADYREGISTRED, ":You can't register twice!");
+    }
+    else {
+        requested_modes=atoi(mode);
+        requested_modes=(requested_modes & (US_MODE_default)); 
+        if (!(client->user_name=strdup(user))) {
+            /*********up write sem*/
+            return ERROR;
+        }
+        if (!(client->real_name=strdup(realname))) {
+            free(client->user_name);
+            client->user_name=NULL;
+            /*********up write sem*/
+            return ERROR;
+        }
+        client->reg_modes=requested_modes;
+        if (client->already_in_server) { /*user already has a nickname, we register and welcome him*/
+            client->reg_modes=(client->reg_modes | (USER_REGISTERED));
+            sprintf(welcome_msg,WELCOME_MSG,user);
+            irc_send_numeric_response(client, RPL_WELCOME, welcome_msg);
+            irc_send_numeric_response(client, RPL_YOURHOST, HOST_MSG);
+            irc_send_numeric_response(client, RPL_CREATED, DATE_MSG);
+            irc_send_numeric_response(client, RPL_MYINFO, MYINFO_MSG);
+        }
+    }
+    /***********************************************************************************************up server write sem*/
+    return OK;
+}
+
 
 /*
  * WHO CMD
