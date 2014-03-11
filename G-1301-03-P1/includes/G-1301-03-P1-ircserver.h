@@ -5,7 +5,8 @@
 #include "uthash.h"
 #include "utlist.h"
 
-#define SERVER_NAME "Guillermo_y_Enrique_IRC_SERVER_V1.0"
+#define SERVER_NAME "irc_server_V1.0"
+#define SERVER_NAME_LENGTH 15
 #define SERVER_LOG_IDENT "IRC_SERVER"
 #define SERVER_MAX_CONNECTIONS INT_MAX
 #define IRC_DEFAULT_PORT 6667
@@ -193,11 +194,13 @@ void irc_exit_message();
 int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, int *n_strings);
 int irc_get_cmd_position(char* cmd);
 int exec_cmd (int number, user* client, char *msg);
-int irc_send_numeric_response(user* client, int numeric_response);
+int irc_send_numeric_response(user* client, int numeric_response, char *details);
 
 
 int irc_ping_cmd(user *client, char *command);
 int irc_nick_cmd(user *client, char *command);
+int irc_pass_cmd(user *client, char *command);
 int irc_who_cmd(user *client, char *command);
+int irc_squit_cmd(user *client, char *command);
 
 #endif

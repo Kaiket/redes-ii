@@ -5,6 +5,8 @@
 #include "G-1301-03-P1-irc_errors.h"
 #include "G-1301-03-P1-irc_utility_functions.h"
 #include "G-1301-03-P1-parser.h"
+#include "../includes/uthash.h"
+#include "../includes/utlist.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
@@ -12,19 +14,16 @@
 #include <pthread.h>
 #include <errno.h>
 
-struct {
-    channel* channels_hasht;
-    /*¿semaforos?*/
-    user* users_hasht;
-    ban* banned_users_llist;
-} server_data;
-
 enum {
     PING,
+    NICK,
+    PASS,
+    WHO,
+    SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "WHO" , "SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -77,7 +76,7 @@ void *irc_thread_routine(void *arg) {
         while (processed <= received && command != NULL) {
             if ((command_pos = irc_get_cmd_position(command)) != ERROR_WRONG_SYNTAX) {
                 if ((command_num = parser(IRC_TOTAL_COMMANDS, command_names, command + command_pos)) == IRC_TOTAL_COMMANDS) {
-                    if (irc_send_numeric_response(my_user, ERR_UNKNOWNCOMMAND) == ERROR) {
+                    if (irc_send_numeric_response(my_user, ERR_UNKNOWNCOMMAND, ":Unknown command or too much parameters") == ERROR) {
                         syslog(LOG_ERR, "Server: Failed while sending numeric response to socket %d: %s", settings->socket, strerror(errno));
                     }
                 } else {
@@ -198,14 +197,24 @@ int irc_get_cmd_position(char* cmd) {
  * 
  */
 int exec_cmd(int number, user* client, char *msg) {
+    int ret;
     switch (number) {
         case PING:
-            irc_ping_cmd(client, msg);
+            ret=irc_ping_cmd(client, msg);
+            break;
+        case NICK:
+            ret=irc_nick_cmd(client, msg);
+            break;
+        case PASS:
+            ret=irc_pass_cmd(client, msg);
+            break;
+        case SQUIT:
+            ret=irc_squit_cmd(client, msg);
             break;
         default:
             break;
     }
-    return OK;
+    return ret;
 }
 
 /*
@@ -214,18 +223,28 @@ int exec_cmd(int number, user* client, char *msg) {
  * 
  *  Sends a numeric response to the user passed as argument (to his socket) 
  */
-int irc_send_numeric_response(user* client, int numeric_response) {
+int irc_send_numeric_response(user* client, int numeric_response, char* details) {
 
-    char ascii_response[IRC_NR_LEN + 1];
+    char *ascii_response=NULL;
+    int length=1 + SERVER_NAME_LENGTH + 1 + IRC_NR_LEN + 1 + IRC_MAX_NICK_LENGTH + strlen(IRC_MSG_END) + 1; /*':servname number targetnick :details'*/
 
-    if (sprintf(ascii_response, "%d", numeric_response) <= 0) {
+    length+=strlen(details);
+    
+    if (!(ascii_response=(char*)malloc(length*sizeof(char)))) {
+        return ERROR;
+    }
+    
+    if (sprintf(ascii_response, ":%s %d %s %s%s", SERVER_NAME, numeric_response, client->nick, details, IRC_MSG_END) <= 0) {
+        free(ascii_response);
         return ERROR;
     }
 
-    if (send_msg(client->socket, ascii_response, IRC_NR_LEN + 1, IRC_MSG_LENGTH) <= 0) {
+    if (send_msg(client->socket, ascii_response, strlen(ascii_response), IRC_MSG_LENGTH) <= 0) {
+        free(ascii_response);
         return ERROR;
     }
 
+    free(ascii_response);
     return OK;
 }
 
@@ -237,7 +256,7 @@ int irc_ping_cmd(user* client, char *command){
 
     int prefix, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
-    char response[strlen("PONG ")+strlen(SERVER_NAME)+1];
+    char response[strlen("PONG ")+strlen(SERVER_NAME)+strlen(IRC_MSG_END)+1];
 
     split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
 
@@ -247,6 +266,7 @@ int irc_ping_cmd(user* client, char *command){
 
     strcpy(response, "PONG ");
     strcat(response, SERVER_NAME);
+    strcat(response, IRC_MSG_END);
     if(send_msg(client->socket, response, strlen(response) ,IRC_MSG_LENGTH) == ERROR){
         return ERROR;
     }
@@ -257,7 +277,83 @@ int irc_ping_cmd(user* client, char *command){
  * NICK CMD
  */
 int irc_nick_cmd (user* client, char* command) {
-    int prefix, n_strings, split_ret_value;
+    int prefix=0, n_strings, split_ret_value;
+    char *target_array[MAX_CMD_ARGS + 2], *new_nick;
+    channel_lst* elt;
+    channel* chan;
+    char success_msg[1+IRC_MAX_NICK_LENGTH*2+strlen("NICK")+2+strlen(IRC_MSG_END)+1];
+    
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    /*check argument number*/
+    if ((n_strings-prefix)<2) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        return OK;
+    }
+    new_nick=target_array[prefix+1];
+    /*check arguments format*/
+    if (!is_valid_nick(new_nick)) {
+        irc_send_numeric_response(client, ERR_ERRONEUSNICKNAME, ":Incorrect Nickname");
+        return OK;
+    }
+    
+    if (!strcmp(client->nick, new_nick)) /*if same nick, nothing to do*/
+        return OK;
+    
+    /*check user modes*/
+    if ((client->reg_modes & US_MODE_r)) {
+        irc_send_numeric_response(client, ERR_RESTRICTED, ":You don't have permission to do that");
+    }
+    
+    /***************************************************************************************************************down server semaphores*/
+    if (user_hasht_find(new_nick)!=NULL) {
+        irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ":Nickname already in use");
+    }
+    if (client->already_in_server==0 || !user_registered_flag(client->reg_modes)) {/*if not already recongnized by the server, we can just change the nick cause he is not in any channel*/
+        strncpy(client->nick, new_nick, strlen(new_nick)+1);
+        user_hasht_add(client);
+        client->already_in_server=1;
+        if (client->user_name!=NULL) { /*if already has a user name (command USER succesful) we register him*/
+            client->reg_modes=(client->reg_modes | USER_REGISTERED);
+        }
+        sprintf(success_msg, ":%s NICK %s%s", client->nick, new_nick, IRC_MSG_END);
+        send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
+    }
+    else { /*in server and registered, seek every channel he is in and change the nick in the list of users or operators*/
+        LL_FOREACH(client->channels_llist , elt) {
+            chan=channel_hasht_find(elt->ch_name);
+            if (remove_nick_from_llist(client->nick, &(chan->users_llist))==OK) {
+                add_nick_to_llist(new_nick, &(chan->users_llist));
+            }
+            else if ((remove_nick_from_llist(client->nick, &(chan->operators_llist))==OK)) {
+                add_nick_to_llist(new_nick, &(chan->users_llist));
+            }
+        }
+        sprintf(success_msg, ":%s NICK %s%s", client->nick, new_nick, IRC_MSG_END);
+        strncpy(client->nick, new_nick, strlen(new_nick)+1);
+        send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
+    }    
+    
+    /***************************************************************************************************************up server semaphores*/
+    
+    return OK;
+}
+
+int irc_squit_cmd (user* client, char* command) {
+    /*developing version, automatically shuts down the server*/
+    exit(0);
+}
+
+/*
+ * PASS CMD
+ */
+int irc_pass_cmd (user* client, char* command) {
+    int prefix=0, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
     
     /*split arguments*/
@@ -268,25 +364,14 @@ int irc_nick_cmd (user* client, char* command) {
     }
     
     /*check argument number*/
-    if ((split_ret_value-prefix)<2)
-        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS);
-    
-    /*check arguments format*/
-    if (!is_valid_nick(target_array[prefix+1]))
-        irc_send_numeric_response(client, ERR_ERRONEUSNICKNAME);
-    
-    if (!strcmp(client->nick, target_array[prefix+1])) /*if same nick, nothing to do*/
+    if ((n_strings-prefix)<2) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
         return OK;
+    }
     
-    /*check user modes*/
-    if ((client->reg_modes & US_MODE_r))
-        irc_send_numeric_response(client, ERR_RESTRICTED);
-    
-    /*down server semaphores*/
-    /*if nick exist, collision*/
-   
-    
-    /*up server semaphores*/
+    if (user_registered_flag(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_ALREADYREGISTRED, ":You can't register twice!");
+    }
     
     return OK;
 }
@@ -311,35 +396,3 @@ int irc_who_cmd(user *client, char *command){
     /*do something*/
     
     /*up semaphores if needed*/
-
-
-/*
- * hash tables manipulation functions
- */
-void user_hasht_add (user *item) {
-    HASH_ADD_STR(server_data.users_hasht, nick, item);
-}
-
-void user_hasht_remove(user *item) {
-    HASH_DEL(server_data.users_hasht, item);
-}
-
-user* user_hasht_find(char key[IRC_MAX_NICK_LENGTH + 1]) {
-    user* found=NULL;
-    HASH_FIND_STR(server_data.users_hasht, key, found);
-    return found;
-}
-
-void channel_hasht_add (channel *item) {
-    HASH_ADD_KEYPTR(hh, server_data.channels_hasht, item->name, strlen(item->name), item);
-}
-
-void channel_hasht_remove(channel *item) {
-    HASH_DEL(server_data.channels_hasht, item);
-}
-
-channel* channel_hasht_find(char *key) {
-    channel* found=NULL;
-    HASH_FIND_STR(server_data.channels_hasht, key, found);
-    return found;
-}
