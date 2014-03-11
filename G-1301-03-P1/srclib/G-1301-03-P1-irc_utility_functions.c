@@ -58,6 +58,25 @@ int is_valid_pass(char* pass) {
     return TRUE;
 }
 
+int is_valid_chname(char* chname) {
+    int i=1;
+    
+    if (chname[0]!='#' && chname[0]!='&' && chname[0]!='+') return FALSE;
+    
+    while (chname[i]!='\0') {
+        if ((chname[i]<0x01 || chname[i]>0x07) && \
+            (chname[i]<0x08 || chname[i]>0x09) && \
+            (chname[i]<0x0B || chname[i]>0x0C) && \
+            (chname[i]<0x0E || chname[i]>0x1F) && \
+            (chname[i]<0x21 || chname[i]>0x2B) && \
+            (chname[i]<0x2D || chname[i]>0x39) && \
+            (chname[i]<0x3B || chname[i]>0xFF)) return FALSE;
+        ++i;
+    }
+    if (i==1) return FALSE;
+    return TRUE;
+}
+
 /*
  * hash tables manipulation functions
  */

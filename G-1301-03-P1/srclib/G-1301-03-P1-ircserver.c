@@ -363,6 +363,8 @@ int irc_squit_cmd (user* client, char* command) {
 int irc_privmsg_cmd (user* client, char* command) {
     int prefix=0, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
+    char *tok_tmp;
+    char *token;
     
     /*split arguments*/
     split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
@@ -372,10 +374,15 @@ int irc_privmsg_cmd (user* client, char* command) {
     }
     
     /*check argument number*/
-    if ((n_strings-prefix)<2) {
+    if ((n_strings-prefix)<3) {
         irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
         return OK;
     }
+    /************************************************************************************down read semaphores*/
+    
+    
+    
+    /************************************************************************************up read semaphores*/
 }
 
 /*
