@@ -216,6 +216,9 @@ int exec_cmd(int number, user* client, char *msg) {
         case PRIVMSG:
             ret=irc_privmsg_cmd(client, msg);
             break;
+        case WHO:
+            ret=irc_who_cmd(client, msg);
+            break;
         case SQUIT:
             ret=irc_squit_cmd(client, msg);
             break;
@@ -608,7 +611,11 @@ int irc_who_cmd(user *client, char *command){
         }
 
         /**SEMAPHORE_HERE**/
-        irc_send_numeric_response(client, RPL_ENDOFWHO, ":End of /WHO list.");
+        details = malloc(strlen(param) + 1 + strlen(":End of /WHO list.") + 1);
+        if(!details) return ERROR;
+        sprintf(details, "%s :End of /WHO list.", param);
+        irc_send_numeric_response(client, RPL_ENDOFWHO, details);
+        free(details);
         param = strtok_r(NULL, ",", &saveptr);
     }
 
