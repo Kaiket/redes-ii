@@ -458,9 +458,45 @@ int send_privmsg_to_user (user *origin, user *target, char* msg) {
 }
 
 int send_privmsg_to_chan (user *origin, channel *target, char* msg) {
-    if (chan_mode_n(target->modes)) { //cant receive message from not members
-        
+    char* error_cantsend=NULL;
+    char* full_msg=NULL;
+    active_nicks* elt;
+    user *target_user;
+    
+    if (chan_mode_n(target->modes)) { //chan mode n can't receive message from not members
+        if ((find_nick_in_llist(origin->nick, &(target->users_llist)) == NULL) && (find_nick_in_llist(origin->nick, &(target->operators_llist)) == NULL)) {
+            if (!(error_cantsend=(char*)malloc((strlen(CANNOTSENDTOCHAN_MSG)+strlen(target->name)+1)*sizeof(char)))){
+                syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 1 error");
+                return ERROR;
+            }
+            sprintf(error_cantsend, CANNOTSENDTOCHAN_MSG, target->name);
+            irc_send_numeric_response(origin, ERR_CANNOTSENDTOCHAN, error_cantsend);
+            free(error_cantsend);
+            return OK;
+        }
     }
+    
+    /*create the message*/
+    if (!(full_msg=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("PRIVMSG") + 1 + strlen(target->name) + 1\
+            + strlen(msg) + strlen(IRC_MSG_END) + 1)))) {
+        syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 2 error");
+        return ERROR;
+    }
+    sprintf(full_msg, ":%s PRIVMSG %s %s%s", origin->nick, target->name, msg, IRC_MSG_END);
+    LL_FOREACH(target->users_llist, elt) {
+        target_user=user_hasht_find(elt->nick);
+        if (target_user) {
+            send_msg(target_user->socket, full_msg, strlen(full_msg), IRC_MSG_LENGTH);
+        }
+    }
+    return OK;
+}
+
+/*
+ * JOIN CMD
+ */
+int irc_join_cmd (user* client, char* command) {
+    
 }
 
 /*
