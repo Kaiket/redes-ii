@@ -215,6 +215,7 @@ int irc_ping_cmd(user *client, char *command);
 int irc_nick_cmd(user *client, char *command);
 int irc_pass_cmd(user *client, char *command);
 int irc_user_cmd (user* client, char* command);
+int irc_privmsg_cmd (user* client, char* command);
 int irc_who_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
 

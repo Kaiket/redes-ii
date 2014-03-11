@@ -320,6 +320,7 @@ int irc_nick_cmd (user* client, char* command) {
         irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ":Nickname already in use");
     }
     else if (client->already_in_server==0 || !user_registered_flag(client->reg_modes)) {/*if not already recongnized by the server, we can just change the nick cause he is not in any channel*/
+        if (client->already_in_server==1) user_hasht_remove(client);
         strncpy(client->nick, new_nick, strlen(new_nick)+1);
         user_hasht_add(client);
         client->already_in_server=1;
@@ -360,7 +361,21 @@ int irc_squit_cmd (user* client, char* command) {
 }
 
 int irc_privmsg_cmd (user* client, char* command) {
+    int prefix=0, n_strings, split_ret_value;
+    char *target_array[MAX_CMD_ARGS + 2];
     
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    /*check argument number*/
+    if ((n_strings-prefix)<2) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        return OK;
+    }
 }
 
 /*
@@ -423,13 +438,13 @@ int irc_user_cmd (user* client, char* command) {
         requested_modes=atoi(mode);
         requested_modes=(requested_modes & (US_MODE_default)); 
         if (!(client->user_name=strdup(user))) {
-            /*********up write sem*/
+            /**************************************************************************up write sem*/
             return ERROR;
         }
         if (!(client->real_name=strdup(realname))) {
             free(client->user_name);
             client->user_name=NULL;
-            /*********up write sem*/
+            /***************************************************************************up write sem*/
             return ERROR;
         }
         client->reg_modes=requested_modes;
