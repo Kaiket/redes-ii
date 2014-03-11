@@ -11,6 +11,10 @@
 #define DATE_MSG ":This server was created in February 2014"
 #define MYINFO_MSG "irc_server_V1.0 1.0 sOorwia IeblktrspqnmiavoO"
 
+#define CANNOTSENDTOCHAN_MSG ":Cannot send to channel %s"
+#define NICK_NFOUND_MSG ":Nick not found %s"
+#define USER_AWAY_MSG ":User %s is away"
+
 #define SERVER_NAME_LENGTH 15
 #define SERVER_LOG_IDENT "IRC_SERVER"
 #define SERVER_MAX_CONNECTIONS INT_MAX
@@ -216,6 +220,8 @@ int irc_nick_cmd(user *client, char *command);
 int irc_pass_cmd(user *client, char *command);
 int irc_user_cmd (user* client, char* command);
 int irc_privmsg_cmd (user* client, char* command);
+int send_privmsg_to_user (user *origin, user *target, char* msg);
+int send_privmsg_to_chan (user *origin, channel *target, char* msg);
 int irc_who_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
 

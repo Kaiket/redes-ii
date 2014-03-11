@@ -8,8 +8,128 @@
 #define TRUE 1
 #define FALSE 0
 
-int user_registered_flag(char flags) {
+int user_mode_a(char flags) {
+    if (flags & US_MODE_a) return TRUE;
+    return FALSE;
+}
+
+int user_mode_i(char flags) {
+    if (flags & US_MODE_i) return TRUE;
+    return FALSE;
+}
+
+int user_mode_w(char flags) {
+    if (flags & US_MODE_w) return TRUE;
+    return FALSE;
+}
+
+int user_mode_r(char flags) {
+    if (flags & US_MODE_r) return TRUE;
+    return FALSE;
+}
+
+int user_mode_o(char flags) {
+    if (flags & US_MODE_o) return TRUE;
+    return FALSE;
+}
+
+int user_mode_O(char flags) {
+    if (flags & US_MODE_O) return TRUE;
+    return FALSE;
+}
+
+int user_mode_s(char flags) {
+    if (flags & US_MODE_s) return TRUE;
+    return FALSE;
+}
+
+int user_registered(char flags) {
     if (flags & USER_REGISTERED) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_O(unsigned int flags) {
+    if (flags & CH_MODE_O) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_o(unsigned int flags) {
+    if (flags & CH_MODE_o) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_v(unsigned int flags) {
+    if (flags & CH_MODE_v) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_a(unsigned int flags) {
+    if (flags & CH_MODE_a) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_i(unsigned int flags) {
+    if (flags & CH_MODE_i) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_m(unsigned int flags) {
+    if (flags & CH_MODE_m) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_n(unsigned int flags) {
+    if (flags & CH_MODE_n) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_q(unsigned int flags) {
+    if (flags & CH_MODE_q) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_p(unsigned int flags) {
+    if (flags & CH_MODE_p) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_s(unsigned int flags) {
+    if (flags & CH_MODE_s) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_r(unsigned int flags) {
+    if (flags & CH_MODE_r) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_t(unsigned int flags) {
+    if (flags & CH_MODE_t) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_k(unsigned int flags) {
+    if (flags & CH_MODE_k) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_l(unsigned int flags) {
+    if (flags & CH_MODE_l) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_b(unsigned int flags) {
+    if (flags & CH_MODE_b) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_e(unsigned int flags) {
+    if (flags & CH_MODE_e) return TRUE;
+    return FALSE;
+}
+
+int chan_mode_I(unsigned int flags) {
+    if (flags & CH_MODE_I) return TRUE;
     return FALSE;
 }
 

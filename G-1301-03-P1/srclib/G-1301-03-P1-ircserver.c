@@ -19,12 +19,13 @@ enum {
     NICK,
     PASS,
     USER,
+    PRIVMSG,
     WHO,
     SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "WHO" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "WHO" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -53,7 +54,7 @@ void *irc_thread_routine(void *arg) {
     syslog(LOG_NOTICE, "Server: New thread created for socket %d\n", settings->socket);
 
     if (!(my_user=(user*)malloc(sizeof(user)))) {
-        send_msg(settings->socket, "Server is full", strlen("Server is full") + 1, IRC_MSG_LENGTH);
+        send_msg(settings->socket, "Server is full", strlen("Server is full"), IRC_MSG_LENGTH);
         syslog(LOG_NOTICE, "Server: Terminating thread for socket %d due to malloc error while creating user struct\n", settings->socket);
         pthread_exit(NULL);
     }
@@ -212,6 +213,9 @@ int exec_cmd(int number, user* client, char *msg) {
         case USER:
             ret=irc_user_cmd(client, msg);
             break;
+        case PRIVMSG:
+            ret=irc_privmsg_cmd(client, msg);
+            break;
         case SQUIT:
             ret=irc_squit_cmd(client, msg);
             break;
@@ -319,7 +323,7 @@ int irc_nick_cmd (user* client, char* command) {
     if (user_hasht_find(new_nick)!=NULL) {
         irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ":Nickname already in use");
     }
-    else if (client->already_in_server==0 || !user_registered_flag(client->reg_modes)) {/*if not already recongnized by the server, we can just change the nick cause he is not in any channel*/
+    else if (client->already_in_server==0 || !user_registered(client->reg_modes)) {/*if not already recongnized by the server, we can just change the nick cause he is not in any channel*/
         if (client->already_in_server==1) user_hasht_remove(client);
         strncpy(client->nick, new_nick, strlen(new_nick)+1);
         user_hasht_add(client);
@@ -363,8 +367,18 @@ int irc_squit_cmd (user* client, char* command) {
 int irc_privmsg_cmd (user* client, char* command) {
     int prefix=0, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
-    char *tok_tmp;
-    char *token;
+    char error_nonick_msg[1+strlen(NICK_NFOUND_MSG) + IRC_MAX_NICK_LENGTH + 1];
+    char *error_nochan=NULL;
+    char *tok_tmp=NULL;
+    char *token=NULL, *target, *msg;
+    user *target_user;
+    channel *target_channel;
+    
+    /*if not registered cannot send messages*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }
     
     /*split arguments*/
     split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
@@ -378,11 +392,72 @@ int irc_privmsg_cmd (user* client, char* command) {
         irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
         return OK;
     }
+    target=target_array[prefix+1];
+    msg=target_array[prefix+2];
+    
     /************************************************************************************down read semaphores*/
-    
-    
-    
+    while ( (token=strtok_r(target, ",", &tok_tmp)) ) {
+        target=NULL;
+        if (is_valid_nick(token)) { /*token is a user_name*/
+            target_user=user_hasht_find(token);
+            if (!target_user) { /*user not found*/
+                sprintf(error_nonick_msg, NICK_NFOUND_MSG, token);
+                irc_send_numeric_response(client, ERR_NOSUCHNICK, error_nonick_msg);
+            }
+            else {
+                send_privmsg_to_user(client, target_user, msg);
+            }
+        }
+        else if (is_valid_chname(token)) { /*token is a channel_name*/
+            target_channel=channel_hasht_find(token);
+            if (!target_channel) { /*channel not found*/
+                if (!(error_nochan=(char*)malloc((strlen(CANNOTSENDTOCHAN_MSG)+strlen(token)+1)*sizeof(char)))) continue;
+                sprintf(error_nochan, CANNOTSENDTOCHAN_MSG, token);
+                irc_send_numeric_response(client, ERR_CANNOTSENDTOCHAN, error_nochan);
+                free(error_nochan);
+                error_nochan=NULL;
+            }
+            else {
+                send_privmsg_to_chan(client, target_channel, msg);
+            }
+        }
+    }
+    return OK;
     /************************************************************************************up read semaphores*/
+}
+
+int send_privmsg_to_user (user *origin, user *target, char* msg) {
+    char away_err[strlen(USER_AWAY_MSG) + IRC_MAX_NICK_LENGTH + 1];
+    char error_nonick_msg[strlen(NICK_NFOUND_MSG) + IRC_MAX_NICK_LENGTH + 1];
+    char *full_reply=NULL; 
+    
+    if (!user_registered(target->reg_modes)){
+        sprintf(error_nonick_msg, NICK_NFOUND_MSG, target->nick);
+        irc_send_numeric_response(origin, ERR_NOSUCHNICK, error_nonick_msg);
+    }
+    else if (user_mode_a(target->reg_modes)) {
+        sprintf(away_err, USER_AWAY_MSG, target->nick);
+        irc_send_numeric_response(origin, RPL_AWAY, away_err);
+    }
+    else {
+        syslog(LOG_NOTICE, "d");
+        if (!(full_reply=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH*2 + 1 + strlen("PRIVMSG") + 1 + 1 + strlen(msg)+ 1 + strlen(IRC_MSG_END) + 1)))) {
+            return ERROR;
+        }
+        sprintf(full_reply, ":%s PRIVMSG %s %s%s", origin->nick, target->nick, msg, IRC_MSG_END);
+        if (send_msg(target->socket, full_reply, strlen(full_reply), IRC_MSG_LENGTH)!=OK) {
+            free(full_reply);
+            return ERROR;
+        }
+        free(full_reply);
+    }
+    return OK;
+}
+
+int send_privmsg_to_chan (user *origin, channel *target, char* msg) {
+    if (chan_mode_n(target->modes)) { //cant receive message from not members
+        
+    }
 }
 
 /*
@@ -407,7 +482,7 @@ int irc_pass_cmd (user* client, char* command) {
     
     /***********************************************************************************************down server read sem*/
     
-    if (user_registered_flag(client->reg_modes)) {
+    if (user_registered(client->reg_modes)) {
         irc_send_numeric_response(client, ERR_ALREADYREGISTRED, ":You can't register twice!");
     }
     
@@ -438,7 +513,7 @@ int irc_user_cmd (user* client, char* command) {
     realname=target_array[prefix+4];
    
     /***********************************************************************************************down server write sem*/
-    if (user_registered_flag(client->reg_modes)) {
+    if (user_registered(client->reg_modes)) {
         irc_send_numeric_response(client, ERR_ALREADYREGISTRED, ":You can't register twice!");
     }
     else {

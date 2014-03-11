@@ -3,7 +3,33 @@
 
 #include "G-1301-03-P1-ircserver.h"
 
-int user_registered_flag(char flags);
+int user_mode_a(char flags);
+int user_mode_i(char flags);
+int user_mode_w(char flags);
+int user_mode_r(char flags);
+int user_mode_o(char flags);
+int user_mode_O(char flags);
+int user_mode_s(char flags);
+int user_registered(char flags);
+
+int chan_mode_O(unsigned int flags);
+int chan_mode_o(unsigned int flags);
+int chan_mode_v(unsigned int flags);
+int chan_mode_a(unsigned int flags);
+int chan_mode_i(unsigned int flags);
+int chan_mode_m(unsigned int flags);
+int chan_mode_n(unsigned int flags);
+int chan_mode_q(unsigned int flags);
+int chan_mode_p(unsigned int flags);
+int chan_mode_s(unsigned int flags);
+int chan_mode_r(unsigned int flags);
+int chan_mode_t(unsigned int flags);
+int chan_mode_k(unsigned int flags);
+int chan_mode_l(unsigned int flags);
+int chan_mode_b(unsigned int flags);
+int chan_mode_e(unsigned int flags);
+int chan_mode_I(unsigned int flags);
+
 int is_letter_char(char c);
 int is_special_char(char c);
 int is_digit_char(char c);
