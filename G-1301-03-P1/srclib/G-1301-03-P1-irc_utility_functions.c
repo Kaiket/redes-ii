@@ -198,6 +198,11 @@ int is_valid_chname(char* chname) {
     return TRUE;
 }
 
+int is_empty_channel(channel* ch) {
+    if (ch->users_llist==NULL && ch->operators_llist==NULL) return TRUE;
+    return FALSE;
+}
+
 /*
  * hash tables manipulation functions
  */

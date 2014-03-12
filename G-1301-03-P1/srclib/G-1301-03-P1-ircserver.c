@@ -23,11 +23,12 @@ enum {
     NAMES,
     JOIN,
     WHO,
+    QUIT,
     SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "WHO" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "WHO", "QUIT" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -51,7 +52,9 @@ void *irc_thread_routine(void *arg) {
     char *command, *save_ptr;
     void *data;
     Thread_handler *settings = (Thread_handler *) arg;
-    user* my_user=NULL;
+    user *my_user=NULL;
+    channel_lst *elt;
+    channel *chan;
     
     syslog(LOG_NOTICE, "Server: New thread created for socket %d\n", settings->socket);
 
@@ -102,7 +105,77 @@ void *irc_thread_routine(void *arg) {
         free(data);
     }
 
+    /*if socket was closed, maybe some data from user is still in server_data, we remove it*/
+    /**********************************************************************************write sem down*/
+    if (my_user->already_in_server) { /*known by the server*/
+        if (user_hasht_find(my_user->nick)){
+            user_hasht_remove(my_user);
+            LL_FOREACH(my_user->channels_llist, elt) {
+                chan=channel_hasht_find(elt->ch_name);
+                if (chan) {
+                    remove_nick_from_llist(my_user->nick, &(chan->users_llist));
+                    remove_nick_from_llist(my_user->nick, &(chan->operators_llist));
+                    chan->users_number--;
+                    if (is_empty_channel(chan)) {
+                        channel_hasht_remove(chan);
+                        free_channel(chan);
+                    }
+                }
+            }
+        }
+    }
+    free_user(my_user);
+    /**********************************************************************************write sem up*/
+    
+    
     pthread_exit(NULL);
+}
+
+void free_channel (channel* ch) {
+    active_nicks *el, *tmp; 
+    if (!ch) return;
+    if (ch->name) free(ch->name);
+    if (ch->topic) free(ch->topic);
+    if (ch->pass) free(ch->pass);
+    if (ch->users_llist) {
+        LL_FOREACH_SAFE(ch->users_llist, el, tmp) {
+            LL_DELETE(ch->users_llist,el);
+            free(el);
+        }
+    }
+    if (ch->operators_llist) {
+        LL_FOREACH_SAFE(ch->operators_llist, el, tmp) {
+            LL_DELETE(ch->operators_llist,el);
+            free(el);
+        }
+    }
+    if (ch->invited_llist) {
+        LL_FOREACH_SAFE(ch->invited_llist, el, tmp) {
+            LL_DELETE(ch->invited_llist,el);
+            free(el);
+        }
+    }
+    free(ch);
+    return;
+}
+
+void free_user(user* us) {
+    channel_lst *ch, *tmp;
+    if (!us) return;
+
+    if (us->user_name) free(us->user_name);
+    if (us->host_name) free(us->host_name);
+    if (us->server_name) free(us->server_name);
+    if (us->real_name) free(us->real_name);
+    if (us->channels_llist) {
+        LL_FOREACH_SAFE(us->channels_llist, ch, tmp) {
+            LL_DELETE(us->channels_llist,ch);
+            free(ch->ch_name);
+            free(ch);
+        }
+    }
+    free(us);
+    return;
 }
 
 /*
@@ -227,6 +300,9 @@ int exec_cmd(int number, user* client, char *msg) {
         case WHO:
             ret=irc_who_cmd(client, msg);
             break;
+        case QUIT:
+            ret=irc_quit_cmd(client, msg);
+            break;
         case SQUIT:
             ret=irc_squit_cmd(client, msg);
             break;
@@ -271,7 +347,7 @@ int irc_send_numeric_response(user* client, int numeric_response, char* details)
 int send_msg_to_channel(channel* chan, char* msg) {
     active_nicks* elt;
     user* user_in_channel;
-    if (!chan) return OK;
+    if (!chan || !msg) return OK;
     /*notification to every user in channel*/
     LL_FOREACH(chan->users_llist, elt) {
         if ((user_in_channel=user_hasht_find(elt->nick))) {
@@ -290,7 +366,7 @@ int send_msg_to_channel(channel* chan, char* msg) {
 int send_msg_to_channel_except(user* client, channel* chan, char* msg) {
     active_nicks* elt;
     user* user_in_channel;
-    if (!chan) return OK;
+    if (!chan || !msg) return OK;
     /*notification to every user in channel*/
     LL_FOREACH(chan->users_llist, elt) {
         if ((user_in_channel=user_hasht_find(elt->nick)) && strcmp(elt->nick, client->nick)) {
@@ -407,6 +483,60 @@ int irc_nick_cmd (user* client, char* command) {
     /***************************************************************************************************************up server semaphores*/
     
     return OK;
+}
+
+int irc_quit_cmd (user* client, char* command) {
+    int prefix=0, n_strings, split_ret_value;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *msg=NULL;
+    channel_lst *elt;
+    channel* chan;
+    
+    
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    syslog(LOG_NOTICE, "debug 1");
+    /*compose a message to notify departure*/
+    if (n_strings-prefix>1) {
+        if ((msg=(char*)malloc(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("QUIT") + 1 + strlen(target_array[prefix+1]) + strlen(IRC_MSG_END) + 1))) { /*compose a message to notify departure*/
+            sprintf(msg, ":%s QUIT %s%s", client->nick, target_array[prefix+1], IRC_MSG_END);
+        }
+    }
+    else { /*no reason given*/
+        if ((msg=(char*)malloc(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("QUIT :") + strlen(IRC_MSG_END) + 1))) { /*compose a message to notify departure*/
+            sprintf(msg, ":%s QUIT :%s", client->nick, IRC_MSG_END);
+        }
+    }
+    syslog(LOG_NOTICE, "debug 2");
+    /**********************************************************************************write sem down*/
+    if (client->already_in_server) { /*known by the server*/
+        user_hasht_remove(client);
+        /*remove client from every channel he's in and notify to the rest of the users*/
+        LL_FOREACH(client->channels_llist, elt) {
+            chan=channel_hasht_find(elt->ch_name);
+            if (chan) {
+                remove_nick_from_llist(client->nick, &(chan->users_llist));
+                remove_nick_from_llist(client->nick, &(chan->operators_llist));
+                chan->users_number--;
+                if (is_empty_channel(chan)) {
+                    channel_hasht_remove(chan);
+                    free_channel(chan);
+                }
+                else {
+                    send_msg_to_channel(chan, msg);
+                }
+            }
+        }
+        send_msg(client->socket, "ERROR :Closing link", strlen("ERROR :Closing link"), IRC_MSG_LENGTH);
+    }
+    close_connection(client->socket);
+    free_user(client);
+    /**********************************************************************************write sem up*/
+    pthread_exit(NULL);
 }
 
 int irc_squit_cmd (user* client, char* command) {
