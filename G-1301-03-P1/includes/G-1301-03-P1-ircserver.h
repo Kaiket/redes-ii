@@ -14,6 +14,8 @@
 #define CANNOTSENDTOCHAN_MSG ":Cannot send to channel %s"
 #define NICK_NFOUND_MSG ":Nick not found %s"
 #define USER_AWAY_MSG ":User %s is away"
+#define ILLEGAL_CHNAME ":Illegal channel name"
+#define INVITEONLYCHAN_MSG "%s :Cannot join channel (+i)"
 
 #define SERVER_NAME_LENGTH 15
 #define SERVER_LOG_IDENT "IRC_SERVER"
@@ -77,7 +79,7 @@ typedef struct {
 #define US_MODE_O 32
 #define US_MODE_s 64
 #define USER_REGISTERED 128
-#define US_MODE_default (US_MODE_i | US_MODE_s | US_MODE_w)
+#define US_MODE_DEFAULT (US_MODE_i | US_MODE_s | US_MODE_w)
 
 typedef struct {
     char* name;
@@ -125,7 +127,7 @@ typedef struct {
 #define CH_MODE_t 32
 #define CH_MODE_r 64
 #define CH_MODE_s 128
-#define CH_MODE_p 254
+#define CH_MODE_p 256
 #define CH_MODE_q 512
 #define CH_MODE_n 1024
 #define CH_MODE_m 2048
@@ -134,7 +136,7 @@ typedef struct {
 #define CH_MODE_v 16384
 #define CH_MODE_o 32768
 #define CH_MODE_O 65536
-#define CH_MODE_default (CH_MODE_O | CH_MODE_o | CH_MODE_n | CH_MODE_t )
+#define CH_MODE_DEFAULT (CH_MODE_O | CH_MODE_o | CH_MODE_n | CH_MODE_t )
 
 /*server data global variable*/
 struct {
@@ -166,6 +168,10 @@ void irc_server_data_init();
  *      void *: not used.
  */
 void *irc_thread_routine(void *arg);
+
+void free_channel (channel* ch);
+void free_user (user* us);
+
 
 
 /*
@@ -220,9 +226,10 @@ int irc_nick_cmd(user *client, char *command);
 int irc_pass_cmd(user *client, char *command);
 int irc_user_cmd (user* client, char* command);
 int irc_privmsg_cmd (user* client, char* command);
-int send_privmsg_to_user (user *origin, user *target, char* msg);
-int send_privmsg_to_chan (user *origin, channel *target, char* msg);
+int irc_names_cmd (user* client, char* command);
+int irc_join_cmd (user* client, char* command);
 int irc_who_cmd(user *client, char *command);
+int irc_quit_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
 
 #endif
