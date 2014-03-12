@@ -25,12 +25,13 @@ enum {
     LIST,
     WHO,
     PART,
+    OPER,
     QUIT,
     SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "PART", "QUIT" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "PART", "OPER", "QUIT" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -307,6 +308,9 @@ int exec_cmd(int number, user* client, char *msg) {
             break;
         case PART:
             ret=irc_part_cmd(client, msg);
+            break;
+        case OPER:
+            ret=irc_oper_cmd(client, msg);
             break;
         case QUIT:
             ret=irc_quit_cmd(client, msg);
@@ -1212,12 +1216,12 @@ int irc_list_cmd(user *client, char *command){
         HASH_ITER(hh, server_data.channels_hasht, ch_found, tmp){
 
             if(ch_found->topic){
-                details = malloc(strlen(ch_found->name) + 23 + strlen(ch_found->topic));
+                details = malloc(strlen(ch_found->name) + 23 + strlen(ch_found->topic) + 1);
                 if(!details) return ERROR;
                 sprintf(details, "%s %u :%s", ch_found->name, ch_found->users_number, ch_found->topic);
             }
             else{
-                details = malloc(strlen(ch_found->name) + 23);
+                details = malloc(strlen(ch_found->name) + 24);
                 if(!details) return ERROR;
                 sprintf(details, "%s %u :", ch_found->name, ch_found->users_number);
             }
@@ -1241,12 +1245,12 @@ int irc_list_cmd(user *client, char *command){
             ch_found = channel_hasht_find(param);
             if(ch_found){
                 if(ch_found->topic){
-                    details = malloc(strlen(ch_found->name) + 23 + strlen(ch_found->topic));
+                    details = malloc(strlen(ch_found->name) + 23 + strlen(ch_found->topic) + 1);
                     if(!details) return ERROR;
                     sprintf(details, "%s %u :%s", ch_found->name, ch_found->users_number, ch_found->topic);
                 }
                 else{
-                    details = malloc(strlen(ch_found->name) + 23);
+                    details = malloc(strlen(ch_found->name) + 24);
                     if(!details) return ERROR;
                     sprintf(details, "%s %u :", ch_found->name, ch_found->users_number);
                 }
@@ -1267,6 +1271,67 @@ int irc_list_cmd(user *client, char *command){
     
 
 }
+
+
+
+/*
+ * OPER CMD
+ */
+int irc_oper_cmd(user *client, char *command) {
+
+    int prefix=0, n_strings, split_ret;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *details;
+    channel* ch_found;
+    channel_lst *chlst;
+
+    split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    if ((n_strings-prefix) < 3) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Not enough parameters");
+        return OK;
+    }
+
+    /*SEMAPHORE HERE*/
+    if(user_mode_o(client->reg_modes) && user_mode_O(client->reg_modes)){
+        return OK;
+    }
+
+    if(strcmp(target_array[1], OPER_USER) || strcmp(target_array[2], OPER_PASS)){
+        irc_send_numeric_response(client, ERR_PASSWDMISMATCH, ":Password incorrect");
+        return OK;
+    }
+    /*SEMAPHORE HERE*/
+
+    /*WRITE SEMAPHORE HERE*/
+    client->reg_modes = client->reg_modes | US_MODE_o | US_MODE_O;
+
+    LL_FOREACH(client->channels_llist, chlst){
+        ch_found = channel_hasht_find(chlst->ch_name);
+        if(ch_found){
+            if(remove_nick_from_llist(client->nick, &(ch_found->users_llist)) != ERROR){
+                if(add_nick_to_llist(client->nick, &(ch_found->operators_llist)) == ERROR) return ERROR;
+            }
+        }
+    }
+
+    /*WRITE SEMAPHORE HERE*/
+
+    details = malloc(strlen("MODE +oO") + 1 + strlen(client->nick) + 1 + strlen(":You are now an IRC operator") + 1);
+    if(!details) return ERROR;
+    sprintf(details, "MODE +oO %s :You are now an IRC operator", client->nick);
+    irc_send_numeric_response(client, RPL_YOUREOPER, details);
+    free(details);
+
+    return OK;
+
+}
+
+
 
     /*split arguments*/
     

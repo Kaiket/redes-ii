@@ -37,6 +37,7 @@
 #define ERROR_WRONG_SYNTAX -2
 #define ERROR_MAX_ARGS -3
 
+#define OPER_USER "someuser"
 #define OPER_PASS "somepass"
 
 typedef struct t {
@@ -228,6 +229,7 @@ int irc_nick_cmd(user *client, char *command);
 int irc_pass_cmd(user *client, char *command);
 int irc_user_cmd (user* client, char* command);
 int irc_privmsg_cmd (user* client, char* command);
+int irc_oper_cmd(user *client, char *command);
 int irc_names_cmd (user* client, char* command);
 int irc_join_cmd (user* client, char* command);
 int irc_list_cmd(user *client, char *command);
