@@ -22,13 +22,14 @@ enum {
     PRIVMSG,
     NAMES,
     JOIN,
+    LIST,
     WHO,
     QUIT,
     SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "WHO", "QUIT" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "QUIT" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -1084,6 +1085,87 @@ int irc_who_cmd(user *client, char *command){
         irc_send_numeric_response(client, RPL_ENDOFWHO, details);
         free(details);
         param = strtok_r(NULL, ",", &saveptr);
+    }
+
+    return OK;
+    
+
+}
+
+
+/*
+ * LIST CMD
+ */
+int irc_list_cmd(user *client, char *command){
+
+    int prefix=0, n_strings, split_ret;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *param, *saveptr, *details;
+    channel *ch_found, *tmp;
+
+    split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+
+    
+    if ((n_strings-prefix) == 1) {
+        irc_send_numeric_response(client, RPL_LISTSTART, "Channel :Users Name");
+        /*SEMAPHORE HERE*/
+        
+        HASH_ITER(hh, server_data.channels_hasht, ch_found, tmp){
+
+            if(ch_found->topic){
+                details = malloc(strlen(ch_found->name) + 23 + strlen(ch_found->topic));
+                if(!details) return ERROR;
+                sprintf(details, "%s %u :%s", ch_found->name, ch_found->users_number, ch_found->topic);
+            }
+            else{
+                details = malloc(strlen(ch_found->name) + 23);
+                if(!details) return ERROR;
+                sprintf(details, "%s %u :", ch_found->name, ch_found->users_number);
+            }
+            
+            irc_send_numeric_response(client, RPL_LIST, details);
+            free(details);
+            
+        }
+        /*SEMAPHORE HERE*/
+        irc_send_numeric_response(client, RPL_LISTEND, ":End of /LIST");
+    }
+
+    else{
+
+        param = strtok_r(target_array[prefix+1], ",", &saveptr);
+        irc_send_numeric_response(client, RPL_LISTSTART, "Channel :Users Name");
+
+        while(param){
+
+            /**SEMAPHORE_HERE**/
+            ch_found = channel_hasht_find(param);
+            if(ch_found){
+                if(ch_found->topic){
+                    details = malloc(strlen(ch_found->name) + 23 + strlen(ch_found->topic));
+                    if(!details) return ERROR;
+                    sprintf(details, "%s %u :%s", ch_found->name, ch_found->users_number, ch_found->topic);
+                }
+                else{
+                    details = malloc(strlen(ch_found->name) + 23);
+                    if(!details) return ERROR;
+                    sprintf(details, "%s %u :", ch_found->name, ch_found->users_number);
+                }
+
+                irc_send_numeric_response(client, RPL_LIST, details);
+                free(details);
+            }
+            /*SEMAPHORE HERE*/
+
+            param = strtok_r(NULL, ",", &saveptr);
+            
+        }
+   
+        irc_send_numeric_response(client, RPL_LISTEND, ":End of /LIST");
     }
 
     return OK;

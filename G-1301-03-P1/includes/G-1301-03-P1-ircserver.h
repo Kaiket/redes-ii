@@ -228,6 +228,7 @@ int irc_user_cmd (user* client, char* command);
 int irc_privmsg_cmd (user* client, char* command);
 int irc_names_cmd (user* client, char* command);
 int irc_join_cmd (user* client, char* command);
+int irc_list_cmd(user *client, char *command);
 int irc_who_cmd(user *client, char *command);
 int irc_quit_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
