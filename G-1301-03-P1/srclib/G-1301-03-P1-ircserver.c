@@ -20,12 +20,14 @@ enum {
     PASS,
     USER,
     PRIVMSG,
+    NAMES,
+    JOIN,
     WHO,
     SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "WHO" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "WHO" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -216,6 +218,12 @@ int exec_cmd(int number, user* client, char *msg) {
         case PRIVMSG:
             ret=irc_privmsg_cmd(client, msg);
             break;
+        case NAMES:
+            ret=irc_names_cmd(client, msg);
+            break;
+        case JOIN:
+            ret=irc_join_cmd(client, msg);
+            break;
         case WHO:
             ret=irc_who_cmd(client, msg);
             break;
@@ -237,7 +245,7 @@ int exec_cmd(int number, user* client, char *msg) {
 int irc_send_numeric_response(user* client, int numeric_response, char* details) {
 
     char *ascii_response=NULL;
-    int length=1 + SERVER_NAME_LENGTH + 1 + IRC_NR_LEN + 1 + IRC_MAX_NICK_LENGTH + strlen(IRC_MSG_END) + 1; /*':servname number targetnick :details'*/
+    int length=1 + SERVER_NAME_LENGTH + 1 + IRC_NR_LEN + 1 + IRC_MAX_NICK_LENGTH + 1 + strlen(IRC_MSG_END) + 1; /*':servname number targetnick :details'*/
 
     length+=strlen(details);
     
@@ -256,6 +264,44 @@ int irc_send_numeric_response(user* client, int numeric_response, char* details)
     }
 
     free(ascii_response);
+    return OK;
+}
+
+/*sends a string to every user in channel given*/
+int send_msg_to_channel(channel* chan, char* msg) {
+    active_nicks* elt;
+    user* user_in_channel;
+    if (!chan) return OK;
+    /*notification to every user in channel*/
+    LL_FOREACH(chan->users_llist, elt) {
+        if ((user_in_channel=user_hasht_find(elt->nick))) {
+            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+        }
+    }
+    LL_FOREACH(chan->operators_llist, elt) {
+        if ((user_in_channel=user_hasht_find(elt->nick))) {
+            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+        }
+    }
+    return OK;
+}
+
+/*sends a string to every user in channel given*/
+int send_msg_to_channel_except(user* client, channel* chan, char* msg) {
+    active_nicks* elt;
+    user* user_in_channel;
+    if (!chan) return OK;
+    /*notification to every user in channel*/
+    LL_FOREACH(chan->users_llist, elt) {
+        if ((user_in_channel=user_hasht_find(elt->nick)) && strcmp(elt->nick, client->nick)) {
+            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+        }
+    }
+    LL_FOREACH(chan->operators_llist, elt) {
+        if ((user_in_channel=user_hasht_find(elt->nick)) && strcmp(elt->nick, client->nick)) {
+            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+        }
+    }
     return OK;
 }
 
@@ -278,7 +324,7 @@ int irc_ping_cmd(user* client, char *command){
     strcpy(response, "PONG ");
     strcat(response, SERVER_NAME);
     strcat(response, IRC_MSG_END);
-    if(send_msg(client->socket, response, strlen(response) ,IRC_MSG_LENGTH) == ERROR){
+    if(send_msg(client->socket, response, strlen(response) ,IRC_MSG_LENGTH) <= 0){
         return ERROR;
     }
     return OK;
@@ -341,6 +387,10 @@ int irc_nick_cmd (user* client, char* command) {
         }
     }
     else { /*in server and registered, seek every channel he is in and change the nick in the list of users or operators*/
+        sprintf(success_msg, ":%s NICK %s%s", client->nick, new_nick, IRC_MSG_END);
+        user_hasht_remove(client);
+        strncpy(client->nick, new_nick, strlen(new_nick)+1);
+        user_hasht_add(client);
         LL_FOREACH(client->channels_llist , elt) {
             chan=channel_hasht_find(elt->ch_name);
             if (remove_nick_from_llist(client->nick, &(chan->users_llist))==OK) {
@@ -349,11 +399,8 @@ int irc_nick_cmd (user* client, char* command) {
             else if ((remove_nick_from_llist(client->nick, &(chan->operators_llist))==OK)) {
                 add_nick_to_llist(new_nick, &(chan->users_llist));
             }
+            send_msg_to_channel_except(client, chan, success_msg);
         }
-        sprintf(success_msg, ":%s NICK %s%s", client->nick, new_nick, IRC_MSG_END);
-        user_hasht_remove(client);
-        strncpy(client->nick, new_nick, strlen(new_nick)+1);
-        user_hasht_add(client);
         send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
     }    
     
@@ -365,6 +412,62 @@ int irc_nick_cmd (user* client, char* command) {
 int irc_squit_cmd (user* client, char* command) {
     /*developing version, automatically shuts down the server*/
     exit(0);
+}
+
+int send_privmsg_to_user (user *origin, user *target, char* msg) {
+    char away_err[strlen(USER_AWAY_MSG) + IRC_MAX_NICK_LENGTH + 1];
+    char error_nonick_msg[strlen(NICK_NFOUND_MSG) + IRC_MAX_NICK_LENGTH + 1];
+    char *full_reply=NULL; 
+    
+    if (!user_registered(target->reg_modes)){
+        sprintf(error_nonick_msg, NICK_NFOUND_MSG, target->nick);
+        irc_send_numeric_response(origin, ERR_NOSUCHNICK, error_nonick_msg);
+    }
+    else if (user_mode_a(target->reg_modes)) {
+        sprintf(away_err, USER_AWAY_MSG, target->nick);
+        irc_send_numeric_response(origin, RPL_AWAY, away_err);
+    }
+    else {
+        if (!(full_reply=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH*2 + 1 + strlen("PRIVMSG") + 1 + 1 + strlen(msg)+ 1 + strlen(IRC_MSG_END) + 1)))) {
+            return ERROR;
+        }
+        sprintf(full_reply, ":%s PRIVMSG %s %s%s", origin->nick, target->nick, msg, IRC_MSG_END);
+        if (send_msg(target->socket, full_reply, strlen(full_reply), IRC_MSG_LENGTH) == ERROR) {
+            free(full_reply);
+            return ERROR;
+        }
+        free(full_reply);
+    }
+    return OK;
+}
+
+int send_privmsg_to_chan (user *origin, channel *target, char* msg) {
+    char* error_cantsend=NULL;
+    char* full_msg=NULL;
+    
+    if (chan_mode_n(target->modes)) { //chan mode n can't receive message from not members
+        if ((find_nick_in_llist(origin->nick, &(target->users_llist)) == NULL) && (find_nick_in_llist(origin->nick, &(target->operators_llist)) == NULL)) {
+            if (!(error_cantsend=(char*)malloc((strlen(CANNOTSENDTOCHAN_MSG)+strlen(target->name)+1)*sizeof(char)))){
+                syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 1 error");
+                return ERROR;
+            }
+            sprintf(error_cantsend, CANNOTSENDTOCHAN_MSG, target->name);
+            irc_send_numeric_response(origin, ERR_CANNOTSENDTOCHAN, error_cantsend);
+            free(error_cantsend);
+            return OK;
+        }
+    }
+    
+    /*create the message*/
+    if (!(full_msg=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("PRIVMSG") + 1 + strlen(target->name) + 1\
+            + strlen(msg) + strlen(IRC_MSG_END) + 1)))) {
+        syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 2 error");
+        return ERROR;
+    }
+    sprintf(full_msg, ":%s PRIVMSG %s %s%s", origin->nick, target->name, msg, IRC_MSG_END);
+    send_msg_to_channel_except(origin, target, full_msg);
+    free(full_msg);
+    return OK;
 }
 
 int irc_privmsg_cmd (user* client, char* command) {
@@ -429,66 +532,196 @@ int irc_privmsg_cmd (user* client, char* command) {
     /************************************************************************************up read semaphores*/
 }
 
-int send_privmsg_to_user (user *origin, user *target, char* msg) {
-    char away_err[strlen(USER_AWAY_MSG) + IRC_MAX_NICK_LENGTH + 1];
-    char error_nonick_msg[strlen(NICK_NFOUND_MSG) + IRC_MAX_NICK_LENGTH + 1];
-    char *full_reply=NULL; 
+
+
+int send_names (user* client, channel *target_chan) {
+    char chantype='=', *chname=SERVER_NAME;
+    char *details=NULL;
+    active_nicks* elt;
+    int length=4, count=0;
+    if (target_chan) { /*send END of /NAMES*/
+        if (chan_mode_p(target_chan->modes)) chantype='*';
+        if (chan_mode_s(target_chan->modes)) chantype='@';
+        chname=target_chan->name;
+        length+=strlen(chname);
+        LL_FOREACH(target_chan->operators_llist, elt) {
+            length+=strlen(elt->nick)+2;
+        }
+        LL_FOREACH(target_chan->users_llist, elt) {
+            length+=strlen(elt->nick)+1;
+        }
+        if (!(details=(char*)malloc(1+length+1))) {
+            return ERROR;
+        }
+        sprintf(details, "%c %s :",chantype, chname);
+        count+=strlen(details);
+        LL_FOREACH(target_chan->operators_llist, elt) {
+            sprintf(details+count, "@%s ", elt->nick);
+            count+=strlen(elt->nick)+2;
+        }
+        LL_FOREACH(target_chan->users_llist, elt) {
+            sprintf(details+count, "%s ", elt->nick);
+            count+=strlen(elt->nick)+1;
+        }
+        irc_send_numeric_response(client, RPL_NAMREPLY, details);
+        free(details);
+        details=NULL;
+    }
     
-    if (!user_registered(target->reg_modes)){
-        sprintf(error_nonick_msg, NICK_NFOUND_MSG, target->nick);
-        irc_send_numeric_response(origin, ERR_NOSUCHNICK, error_nonick_msg);
+    details = (char*) malloc(strlen(chname) + 1 + strlen(":End of /NAMES list.") + 1);
+    if(!details) return ERROR;
+    sprintf(details, "%s :End of /NAMES list.", chname);
+    irc_send_numeric_response(client, RPL_ENDOFNAMES, details);
+    free(details);
+    return OK;
+}
+/*
+ * NAMES CMD
+ */
+int irc_names_cmd (user* client, char* command) {
+    int prefix=0, n_strings, split_ret_value;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *tok_tmp=NULL;
+    char *token=NULL, *target;
+    channel *target_channel;
+    
+    /*if not registered can't do this*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
     }
-    else if (user_mode_a(target->reg_modes)) {
-        sprintf(away_err, USER_AWAY_MSG, target->nick);
-        irc_send_numeric_response(origin, RPL_AWAY, away_err);
+    
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
     }
-    else {
-        syslog(LOG_NOTICE, "d");
-        if (!(full_reply=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH*2 + 1 + strlen("PRIVMSG") + 1 + 1 + strlen(msg)+ 1 + strlen(IRC_MSG_END) + 1)))) {
-            return ERROR;
+    
+    /*check argument number*/
+    if ((n_strings-prefix)==1) {
+        send_names(client, NULL);
+        return OK;
+    }
+    target=target_array[prefix+1];
+    
+    /************************************************************************************down read semaphores*/
+    while ( (token=strtok_r(target, ",", &tok_tmp)) ) {
+        target=NULL;
+        if (is_valid_chname(token)) { /*token is a channel_name*/
+            if ((target_channel=channel_hasht_find(token))!=NULL) {
+                syslog(LOG_NOTICE, "debug 1");
+                send_names(client, target_channel);
+            }
         }
-        sprintf(full_reply, ":%s PRIVMSG %s %s%s", origin->nick, target->nick, msg, IRC_MSG_END);
-        if (send_msg(target->socket, full_reply, strlen(full_reply), IRC_MSG_LENGTH)!=OK) {
-            free(full_reply);
-            return ERROR;
-        }
-        free(full_reply);
     }
+    /************************************************************************************up read semaphores*/
     return OK;
 }
 
-int send_privmsg_to_chan (user *origin, channel *target, char* msg) {
-    char* error_cantsend=NULL;
-    char* full_msg=NULL;
-    active_nicks* elt;
-    user *target_user;
+
+int user_join_chan(user *client,channel *chan,char *pass) {
+    char *err_inviteonly, *full_reply=NULL, *chantopic;
+    int removeinv=0;
+
+    if (find_chname_in_llist(chan->name, &(client->channels_llist))) return OK;  /*if already in the channel return*/
     
-    if (chan_mode_n(target->modes)) { //chan mode n can't receive message from not members
-        if ((find_nick_in_llist(origin->nick, &(target->users_llist)) == NULL) && (find_nick_in_llist(origin->nick, &(target->operators_llist)) == NULL)) {
-            if (!(error_cantsend=(char*)malloc((strlen(CANNOTSENDTOCHAN_MSG)+strlen(target->name)+1)*sizeof(char)))){
-                syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 1 error");
+    if (chan_mode_k(chan->modes)) {
+        if (pass && chan->pass) {
+            if (strcmp(pass, chan->pass)) {
+                irc_send_numeric_response(client ,ERR_PASSWDMISMATCH ,":Password incorrect");
+                return OK;
+            }
+        }
+    }
+    
+    if (chan_mode_i(chan->modes)) { /*invite-only channel*/
+        if (!find_nick_in_llist(client->nick, &(chan->invited_llist))) {
+            if (!(err_inviteonly=(char*)malloc(sizeof(char)*(strlen(INVITEONLYCHAN_MSG) + strlen(chan->name) + 1)))) {
+                syslog(LOG_NOTICE, "user_join_chan error in malloc 1");
                 return ERROR;
             }
-            sprintf(error_cantsend, CANNOTSENDTOCHAN_MSG, target->name);
-            irc_send_numeric_response(origin, ERR_CANNOTSENDTOCHAN, error_cantsend);
-            free(error_cantsend);
+            sprintf(err_inviteonly, INVITEONLYCHAN_MSG, chan->name);
+            irc_send_numeric_response(client ,ERR_INVITEONLYCHAN , err_inviteonly);
             return OK;
         }
+        removeinv=1;
     }
     
-    /*create the message*/
-    if (!(full_msg=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("PRIVMSG") + 1 + strlen(target->name) + 1\
-            + strlen(msg) + strlen(IRC_MSG_END) + 1)))) {
-        syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 2 error");
-        return ERROR;
-    }
-    sprintf(full_msg, ":%s PRIVMSG %s %s%s", origin->nick, target->name, msg, IRC_MSG_END);
-    LL_FOREACH(target->users_llist, elt) {
-        target_user=user_hasht_find(elt->nick);
-        if (target_user) {
-            send_msg(target_user->socket, full_msg, strlen(full_msg), IRC_MSG_LENGTH);
+    /*introducing user in channel*/
+    if (add_chname_to_llist(chan->name, &(client->channels_llist))==ERROR) return ERROR;
+    if (user_mode_o(client->reg_modes) || user_mode_O(client->reg_modes)) {
+        if (add_nick_to_llist(client->nick, &(chan->operators_llist))==ERROR) {
+            remove_chname_from_llist(chan->name, &(client->channels_llist));
+            return ERROR;
         }
     }
+    else {
+        if (add_nick_to_llist(client->nick, &(chan->users_llist))==ERROR) {
+            remove_chname_from_llist(chan->name, &(client->channels_llist));
+            return ERROR;
+        }
+    }
+    (chan->users_number)++;
+    
+    /*Sending replies*/
+    if (!(full_reply=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("JOIN") + 1 + strlen(chan->name) + strlen(IRC_MSG_END) + 1)))) {
+        syslog(LOG_NOTICE, "user_join_chan error in malloc 2");
+        return ERROR;
+    }
+    sprintf(full_reply, ":%s JOIN %s%s", client->nick, chan->name, IRC_MSG_END);
+    send_msg_to_channel(chan, full_reply);
+    free(full_reply);
+    
+    if (chan->topic) {
+        if (!(chantopic=(char*)malloc(sizeof(char)*(strlen(chan->name) + 2 + strlen(chan->topic) + 2)))) {
+            syslog(LOG_NOTICE, "user_join_chan error in malloc 3");
+            return ERROR;
+        }
+        sprintf(chantopic, "%s :%s", chan->name, chan->topic);
+        irc_send_numeric_response(client, RPL_TOPIC, chantopic);
+        free(chantopic);
+    }
+    
+    if (removeinv) remove_nick_from_llist(client->nick, &(chan->invited_llist));
+    return OK;
+}
+
+int create_channel(user* client,char* chname) {
+    channel *new=NULL;
+    char *full_reply=NULL;
+    
+    if (!(new=(channel*)malloc(sizeof(channel)))) return ERROR;
+    new->name=NULL;
+    new->topic=NULL;
+    new->pass=NULL;
+    new->modes=CH_MODE_DEFAULT;
+    new->users_number=0; 
+    new->users_max=0; 
+    new->users_llist=NULL;
+    new->operators_llist=NULL;
+    new->invited_llist=NULL;
+    
+    if (!(new->name=strdup(chname))) {
+        free(new);
+        return ERROR;
+    }
+    
+    if (!(full_reply=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("JOIN") + 1 + strlen(new->name) + strlen(IRC_MSG_END) + 1)))) {
+        free(new);
+        return ERROR;
+    }
+    sprintf(full_reply, ":%s JOIN %s%s", client->nick, new->name, IRC_MSG_END);
+    send_msg(client->socket, full_reply, strlen(full_reply), IRC_MSG_LENGTH);
+    free(full_reply);
+    /*introducing user in channel*/
+    if (add_chname_to_llist(new->name, &(client->channels_llist))!=OK) return ERROR;
+    if (add_nick_to_llist(client->nick, &(new->operators_llist))!=OK) { /*creator is operator by default*/
+        remove_chname_from_llist(new->name, &(client->channels_llist));
+        return ERROR;
+    }
+    /*introducing channel in hash table*/
+    channel_hasht_add(new);
     return OK;
 }
 
@@ -496,7 +729,74 @@ int send_privmsg_to_chan (user *origin, channel *target, char* msg) {
  * JOIN CMD
  */
 int irc_join_cmd (user* client, char* command) {
+        int prefix=0, n_strings, split_ret_value;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *error_nochan=NULL;
+    char *chnametmp=NULL, *chpasstmp=NULL;
+    char *chnametoken=NULL, *chpasstoken=NULL, *targetnm, *targetpass=NULL;
+    channel *target_channel;
     
+    /*if not registered action not allowed*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }
+    
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    /*check argument number*/
+    if ((n_strings-prefix)<2) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        return OK;
+    }
+    
+    if ((target_array[prefix+1][0]=='0') && (target_array[prefix+1][1]=='\0')) { /*join 0 means leave all channels currently in*/
+        
+        /*call quit cmd for every channel*/
+        
+        return OK;
+    }
+    
+    targetnm=target_array[prefix+1];
+    if (n_strings-prefix>2) {
+        targetpass=target_array[prefix+2];
+    }
+    /************************************************************************************down write semaphores*/
+    while ( (chnametoken=strtok_r(targetnm, ",", &chnametmp)) ) {
+        targetnm=NULL;
+        if (is_valid_chname(chnametoken)) {
+            target_channel=channel_hasht_find(chnametoken);
+            if (target_channel) { /*channel exists*/
+                if (n_strings-prefix>2) {
+                    chpasstoken=strtok_r(targetpass, ",", &chpasstmp);
+                    targetpass=NULL;
+                }
+                user_join_chan(client, target_channel, chpasstoken);
+                send_names (client, target_channel);
+            }
+            else { /*channel doesn't exist, we create it*/
+                create_channel(client, chnametoken);
+                send_names (client, channel_hasht_find(chnametoken));
+            }
+            target_channel=NULL;
+        }
+        else { /*not a valid channel name*/
+            if (!(error_nochan=(char*)malloc(sizeof(char)*(strlen(chnametoken) + 1 + strlen(ILLEGAL_CHNAME) + 1)))) {
+                break;
+            }
+            sprintf(error_nochan, "%s %s", chnametoken, ILLEGAL_CHNAME);
+            irc_send_numeric_response(client, ERR_ILLEGALCHNAME, error_nochan);
+            free(error_nochan);
+            error_nochan=NULL;
+        }
+    }
+    /************************************************************************************up write semaphores*/
+    return OK;
 }
 
 /*
@@ -543,7 +843,7 @@ int irc_user_cmd (user* client, char* command) {
     }
     
     /*check argument number*/
-    if ((n_strings-prefix)<4) {
+    if ((n_strings-prefix)<5) {
         irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
         return OK;
     }
@@ -557,11 +857,12 @@ int irc_user_cmd (user* client, char* command) {
     }
     else {
         requested_modes=atoi(mode);
-        requested_modes=(requested_modes & (US_MODE_default)); 
+        requested_modes=(requested_modes & (US_MODE_DEFAULT)); 
         if (!(client->user_name=strdup(user))) {
             /**************************************************************************up write sem*/
             return ERROR;
         }
+        if (realname[0]==':') realname++;
         if (!(client->real_name=strdup(realname))) {
             free(client->user_name);
             client->user_name=NULL;
@@ -617,9 +918,9 @@ int irc_who_cmd(user *client, char *command){
                 usr_found = user_hasht_find(nick->nick);
                 if (usr_found) {
                     if(!user_mode_i(usr_found->reg_modes)){
-                        details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 4 + strlen(usr_found->real_name)+1);
+                        details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 7 + strlen(usr_found->real_name)+1);
                         if(!details) return ERROR;
-                        sprintf(details, "%s ~%s - - %s H@ %s", param, 
+                        sprintf(details, "%s ~%s - - %s H@ :0 %s", param, 
                                                                    usr_found->user_name,  
                                                                    usr_found->nick,
                                                                    usr_found->real_name);
@@ -633,9 +934,9 @@ int irc_who_cmd(user *client, char *command){
                 usr_found = user_hasht_find(nick->nick);
                 if (usr_found) {
                     if(!user_mode_i(usr_found->reg_modes)){
-                        details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 3 + strlen(usr_found->real_name)+1);
+                        details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 6 + strlen(usr_found->real_name)+1);
                         if(!details) return ERROR;
-                        sprintf(details, "%s ~%s - - %s H %s", param, 
+                        sprintf(details, "%s ~%s - - %s H :0 %s", param, 
                                                                    usr_found->user_name, 
                                                                    usr_found->nick,
                                                                    usr_found->real_name);
