@@ -16,6 +16,8 @@
 #define USER_AWAY_MSG ":User %s is away"
 #define ILLEGAL_CHNAME ":Illegal channel name"
 #define INVITEONLYCHAN_MSG "%s :Cannot join channel (+i)"
+#define NOSUCHCHANNEL_MSG "%s :No such channel"
+#define NOTONCHANNEL_MSG "%s :You're not on that channel"
 
 #define SERVER_NAME_LENGTH 15
 #define SERVER_LOG_IDENT "IRC_SERVER"
@@ -230,6 +232,7 @@ int irc_names_cmd (user* client, char* command);
 int irc_join_cmd (user* client, char* command);
 int irc_list_cmd(user *client, char *command);
 int irc_who_cmd(user *client, char *command);
+int irc_part_cmd (user* client, char* command);
 int irc_quit_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
 

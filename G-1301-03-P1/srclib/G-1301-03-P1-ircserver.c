@@ -24,12 +24,13 @@ enum {
     JOIN,
     LIST,
     WHO,
+    PART,
     QUIT,
     SQUIT,
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "QUIT" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "PART", "QUIT" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -298,8 +299,14 @@ int exec_cmd(int number, user* client, char *msg) {
         case JOIN:
             ret=irc_join_cmd(client, msg);
             break;
+        case LIST:
+            ret=irc_list_cmd(client, msg);
+            break;
         case WHO:
             ret=irc_who_cmd(client, msg);
+            break;
+        case PART:
+            ret=irc_part_cmd(client, msg);
             break;
         case QUIT:
             ret=irc_quit_cmd(client, msg);
@@ -483,6 +490,96 @@ int irc_nick_cmd (user* client, char* command) {
     
     /***************************************************************************************************************up server semaphores*/
     
+    return OK;
+}
+
+int user_part_chan(user* client, channel* chan, char* leave_msg) {
+    char *error_msg=NULL, *msg=NULL, *none=":", *user_msg=NULL;
+    
+    if (leave_msg) {
+        user_msg=leave_msg;
+    }
+    else {
+        user_msg=none;
+    }
+    
+    if (!chan) { /*no such channel*/
+        if (!(error_msg=(char*)malloc(strlen(NOSUCHCHANNEL_MSG) + strlen(chan->name) + 1))) {
+            return ERROR;
+        }
+        sprintf(error_msg, NOSUCHCHANNEL_MSG, chan->name);
+        irc_send_numeric_response(client, ERR_NOSUCHCHANNEL,error_msg);
+        free(error_msg);
+    }
+    else if (!find_chname_in_llist(chan->name, &(client->channels_llist))) { /*not on channel*/
+        if (!(error_msg=(char*)malloc(strlen(NOTONCHANNEL_MSG) + strlen(chan->name) + 1))) {
+            return ERROR;
+        }
+        sprintf(error_msg, NOTONCHANNEL_MSG, chan->name);
+        irc_send_numeric_response(client, ERR_NOTONCHANNEL,error_msg);
+        free(error_msg);
+    }
+    else { /*on channel, leave, notify to members and if channel is empty delete it*/
+        if (!(msg=(char*)malloc(1+strlen(client->nick)+1+strlen("PART")+1+strlen(chan->name)+1+strlen(user_msg)+strlen(IRC_MSG_END)+1))) {
+            return ERROR;
+        }
+        sprintf(msg, ":%s PART %s %s%s", client->nick, chan->name, user_msg, IRC_MSG_END);
+        send_msg_to_channel(chan, msg);
+        remove_chname_from_llist(chan->name, &(client->channels_llist));
+        remove_nick_from_llist(client->nick, &(chan->users_llist));
+        remove_nick_from_llist(client->nick, &(chan->operators_llist));
+        chan->users_number--;
+        if (is_empty_channel(chan)) {
+            channel_hasht_remove(chan);
+            free_channel(chan);
+        }
+        free(msg);
+    }
+    return OK;
+}
+
+/*
+ * IRC PART
+ */
+int irc_part_cmd (user* client, char* command) {
+    int prefix=0, n_strings, split_ret_value;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *chnametmp=NULL;
+    char *chnametoken=NULL, *targetnm;
+    channel *target_channel;
+    char* msg=NULL;
+    
+    /*if not registered action not allowed*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }
+    
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    /*check argument number*/
+    if ((n_strings-prefix)<2) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        return OK;
+    }
+    
+    targetnm=target_array[prefix+1];
+    if (n_strings-prefix>2) msg=target_array[prefix+2];
+    
+    /************************************************************************************down write semaphores*/
+    while ( (chnametoken=strtok_r(targetnm, ",", &chnametmp)) ) {
+        targetnm=NULL;
+        if (is_valid_chname(chnametoken)) {
+            target_channel=channel_hasht_find(chnametoken);
+            if (target_channel) user_part_chan(client, target_channel, msg);
+        }        
+    }
+    /************************************************************************************up write semaphores*/
     return OK;
 }
 
@@ -827,7 +924,7 @@ int create_channel(user* client,char* chname) {
     new->topic=NULL;
     new->pass=NULL;
     new->modes=CH_MODE_DEFAULT;
-    new->users_number=0; 
+    new->users_number=1; 
     new->users_max=0; 
     new->users_llist=NULL;
     new->operators_llist=NULL;
@@ -839,7 +936,7 @@ int create_channel(user* client,char* chname) {
     }
     
     if (!(full_reply=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("JOIN") + 1 + strlen(new->name) + strlen(IRC_MSG_END) + 1)))) {
-        free(new);
+        free_channel(new);
         return ERROR;
     }
     sprintf(full_reply, ":%s JOIN %s%s", client->nick, new->name, IRC_MSG_END);
@@ -848,7 +945,7 @@ int create_channel(user* client,char* chname) {
     /*introducing user in channel*/
     if (add_chname_to_llist(new->name, &(client->channels_llist))!=OK) return ERROR;
     if (add_nick_to_llist(client->nick, &(new->operators_llist))!=OK) { /*creator is operator by default*/
-        remove_chname_from_llist(new->name, &(client->channels_llist));
+        free_channel(new);
         return ERROR;
     }
     /*introducing channel in hash table*/
@@ -860,7 +957,7 @@ int create_channel(user* client,char* chname) {
  * JOIN CMD
  */
 int irc_join_cmd (user* client, char* command) {
-        int prefix=0, n_strings, split_ret_value;
+    int prefix=0, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
     char *error_nochan=NULL;
     char *chnametmp=NULL, *chpasstmp=NULL;
@@ -1088,10 +1185,8 @@ int irc_who_cmd(user *client, char *command){
     }
 
     return OK;
-    
-
 }
-
+    
 
 /*
  * LIST CMD
