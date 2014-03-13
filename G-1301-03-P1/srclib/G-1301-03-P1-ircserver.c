@@ -16,6 +16,7 @@
 
 enum {
     PING,
+    MODE,
     NICK,
     PASS,
     USER,
@@ -31,7 +32,7 @@ enum {
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "PART", "OPER", "QUIT" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "MODE", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "PART", "OPER", "QUIT" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -41,7 +42,7 @@ void irc_server_data_init() {
     server_data.banned_users_llist=NULL;
     server_data.channels_hasht=NULL;
     server_data.users_hasht=NULL;
-    /*semaforos*/
+    /*inicializar semaforos*/
 }
 
 /*
@@ -164,8 +165,8 @@ void free_channel (channel* ch) {
 
 void free_user(user* us) {
     channel_lst *ch, *tmp;
+    
     if (!us) return;
-
     if (us->user_name) free(us->user_name);
     if (us->host_name) free(us->host_name);
     if (us->server_name) free(us->server_name);
@@ -281,6 +282,9 @@ int exec_cmd(int number, user* client, char *msg) {
     switch (number) {
         case PING:
             ret=irc_ping_cmd(client, msg);
+            break;
+        case MODE:
+            ret=irc_mode_cmd(client, msg);
             break;
         case NICK:
             ret=irc_nick_cmd(client, msg);
@@ -418,6 +422,263 @@ int irc_ping_cmd(user* client, char *command){
     return OK;
 }
 
+
+int apply_modes_to_chan(user *us, channel* ch, char* modestr, char** modeargs) {
+    char oper, unknown_mode, *unk_msg, *msg=NULL;
+    unsigned int wanted_modes;
+    int i=0, arg_count=0;
+    user* targ_us;
+    
+    if (!(unk_msg=malloc(sizeof(UNKNOWNMODE_MSG)+strlen(ch->name)+1))) return ERROR;
+    sprintf(unk_msg, UNKNOWNMODE_MSG, ch->name);
+    
+    wanted_modes=chan_mode_from_str(modestr, &unknown_mode, &oper);
+    if (modestr[0]=='-') { oper='-'; ++i;}
+    else {
+        oper='+';
+        if (modestr[0]=='+') ++i;
+    }
+    for (;modestr[i]!='\0'; ++i) {
+        switch(modestr[i]) {
+            case 'o':
+                if (arg_count>=3) continue;
+                else if (modeargs[arg_count]==NULL) irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
+                else if (!is_valid_nick(modeargs[arg_count])) {arg_count++; continue;}
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH*2 + 2 + strlen("MODE") + 1 + strlen(ch->name) + 5 + strlen(IRC_MSG_END) + 1))) continue;
+                if (oper=='+'){
+                    if (find_nick_in_llist(modeargs[arg_count], &(ch->operators_llist))) {
+                        arg_count++; 
+                        free(msg);
+                        continue;
+                    }
+                    if (find_nick_in_llist(modeargs[arg_count], &(ch->users_llist))) {
+                        if (remove_nick_from_llist(modeargs[arg_count], &(ch->users_llist))) {
+                            add_nick_to_llist(modeargs[arg_count], &(ch->operators_llist));
+                            sprintf(msg, ":%s MODE %s +o %s%s", us->nick, ch->name, modeargs[arg_count], IRC_MSG_END);
+                            send_msg_to_channel(ch, msg);
+                        }
+                    }
+                    else {
+                        irc_send_numeric_response(us, ERR_USERNOTINCHANNEL, ":User not in channel");
+                    }
+                }
+                else {
+                    targ_us=user_hasht_find(modeargs[arg_count]);
+                    if (!targ_us) {free(msg); arg_count++; continue;}
+                    if (user_mode_o(targ_us->reg_modes) || user_mode_O(targ_us->reg_modes)) {
+                        arg_count++; 
+                        free(msg);
+                        continue;
+                    }
+                    else if (remove_nick_from_llist(modeargs[arg_count], &(ch->operators_llist))) {
+                        add_nick_to_llist(modeargs[arg_count], &(ch->users_llist));
+                        sprintf(msg, ":%s MODE %s -o %s%s", us->nick, ch->name, modeargs[arg_count], IRC_MSG_END);
+                        send_msg_to_channel(ch, msg);
+                    }
+                }
+                arg_count++;
+                free(msg);
+                break;
+                
+            case 'i':
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                if (oper=='+'){
+                    sprintf(msg, ":%s MODE %s +i%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                else {
+                    sprintf(msg, ":%s MODE %s -i%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                send_msg_to_channel(ch, msg);
+                free(msg);
+                break;
+                
+            case 'n':
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                if (oper=='+'){
+                    sprintf(msg, ":%s MODE %s +n%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                else {
+                    sprintf(msg, ":%s MODE %s -n%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                send_msg_to_channel(ch, msg);
+                free(msg);
+                break;
+                
+            case 't':
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                if (oper=='+'){
+                    sprintf(msg, ":%s MODE %s +t%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                else {
+                    sprintf(msg, ":%s MODE %s -t%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                send_msg_to_channel(ch, msg);
+                free(msg);
+                break;
+                
+            case 'k':
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                if (oper=='+'){
+                    if (arg_count>=3) {free(msg); continue;}
+                    else if (modeargs[arg_count]==NULL) irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
+                    else if (!is_valid_pass(modeargs[arg_count])) {free(msg); arg_count++; continue;}
+                    if (ch->pass) {
+                        irc_send_numeric_response(us, ERR_KEYSET, ":Key already set");
+                        free(msg);
+                        arg_count++;
+                        wanted_modes=(wanted_modes & ~CH_MODE_k);
+                        continue;
+                    }
+                    ch->pass=strdup(modeargs[arg_count]);
+                    sprintf(msg, ":%s MODE %s +k%s", us->nick, ch->name,  IRC_MSG_END);
+                    arg_count++;
+                }
+                else {
+                    if (!ch->pass) {free(msg); continue;}
+                    free(ch->pass);
+                    ch->pass=NULL;
+                    sprintf(msg, ":%s MODE %s -k%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                send_msg_to_channel(ch, msg);
+                free(msg);
+                break;
+                
+            case 'l':
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                if (oper=='+'){
+                    if (arg_count>=3) {free(msg); continue;}
+                    else if (modeargs[arg_count]==NULL) irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
+                    if (atoi(modeargs[arg_count])<=0) {
+                        wanted_modes=(wanted_modes & ~CH_MODE_l);
+                        free(msg);
+                        continue;
+                    }
+                    ch->users_max=atoi(modeargs[arg_count]);
+                    sprintf(msg, ":%s MODE %s +l%s", us->nick, ch->name,  IRC_MSG_END);
+                    arg_count++;
+                }
+                else {
+                    if (!chan_mode_l(ch->modes)) {free(msg); continue;}
+                    sprintf(msg, ":%s MODE %s -l%s", us->nick, ch->name,  IRC_MSG_END);
+                }
+                send_msg_to_channel(ch, msg);
+                free(msg);
+                break;
+                
+            default:
+                unk_msg[0]=modestr[i];
+                irc_send_numeric_response(us, ERR_UNKNOWNMODE, unk_msg);
+                break;
+        }
+        msg=NULL;
+    }
+    if (oper=='+') ch->modes=(ch->modes | wanted_modes);
+    else ch->modes=(ch->modes & ~wanted_modes);
+    free(unk_msg);
+    return OK;
+}
+
+/*
+ * MODE CMD
+ */
+int irc_mode_cmd (user* client, char* command) {
+    int prefix=0, n_strings, split_ret_value, passlen;
+    char *target_array[MAX_CMD_ARGS + 2], *user_mode_str, *ch_mode_str;
+    char unknown_mode, operation, *msg; 
+    char user_new_mode;
+    channel* target_chan;
+    
+    /*if not registered action not allowed*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }
+    
+    /*split arguments*/
+    split_ret_value = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    /*check argument number*/
+    if ((n_strings-prefix)<2) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
+        return OK;
+    }
+    
+    if (is_valid_nick(target_array[prefix+1])) { /*target is a user*/
+        if (strcmp(client->nick, target_array[prefix+1])) { /*users dont match*/
+            irc_send_numeric_response(client, ERR_USERSDONTMATCH, USERSDONTMATCH_MSG);
+        }
+        else if ((n_strings-prefix)==2) { /*no more parameters RPL_UMODEIS*/
+            /***********************************************************************************************down server read sem*/
+            if (!(user_mode_str=user_mode_string(client->reg_modes))) return ERROR;
+            /***********************************************************************************************up server read sem*/
+            irc_send_numeric_response(client, RPL_UMODEIS, user_mode_str);
+            free(user_mode_str);
+            return OK;
+        }
+        else {
+            /***********************************************************************************************down server write sem*/
+            user_new_mode=user_mode_from_str(target_array[prefix+2], &unknown_mode, &operation);
+            if (operation=='+') {
+                user_new_mode=(user_new_mode & ~(US_MODE_a | US_MODE_o | US_MODE_O)); /*cannot grant a o O modes this way*/
+            }
+            else user_new_mode=(user_new_mode | US_MODE_r); /*cannot set r to 0 this way*/
+            if (unknown_mode) {
+                irc_send_numeric_response(client, ERR_UMODEUNKNOWNFLAG, UMODEUNKNOWNFLAG_MSG);
+            }
+            client->reg_modes=(USER_REGISTERED|user_new_mode|client->reg_modes);
+            /***********************************************************************************************up server write sem*/
+            if (!(user_mode_str=user_mode_string(user_new_mode))) return ERROR;
+            if (!(msg=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH*2 + 1 + strlen("MODE") + 3 + strlen(user_mode_str) + strlen(IRC_MSG_END) + 1)))) {
+                free(user_mode_str);
+                return ERROR;
+            }
+            sprintf(msg, ":%s MODE %s :%s%s", client->nick, client->nick, user_mode_str, IRC_MSG_END);
+            send_msg(client->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+            free(user_mode_str);
+            free(msg);
+        }
+        
+    }
+    else if (is_valid_chname(target_array[prefix+1])) { /*target is a channel*/
+        /***********************************************************************************************down write*******/
+        target_chan=channel_hasht_find(target_array[prefix+1]);
+        if (!target_chan) { /*no such channel*/
+            /***********************************************************************************************up write*******/
+            return OK;
+        }
+        if ((n_strings-prefix)==2) { /*no more arguments*/
+            if (!(ch_mode_str=chan_mode_string(target_chan->modes))) {
+                /***********************************************************************************************up write*******/
+                return ERROR;
+            }
+            passlen=((target_chan->pass==NULL)?0:strlen(target_chan->pass));
+            if (!(msg=malloc(strlen(target_chan->name)+1+strlen(ch_mode_str)+1+passlen+22))) {
+                /***********************************************************************************************up write*******/
+                return ERROR;
+            }
+            sprintf(msg, "%s %s %s %ud", target_chan->name, ch_mode_str, ((target_chan->pass==NULL)?"":target_chan->pass), target_chan->users_max );
+            irc_send_numeric_response(client, RPL_CHANNELMODEIS, msg);
+            free(ch_mode_str);
+            /***********************************************************************************************up write*******/
+            return OK;
+        }
+        else {
+            if (!find_nick_in_llist(client->nick, &(target_chan->operators_llist))) {
+                irc_send_numeric_response(client, ERR_CHANOPRIVSNEEDED, ":You are not channel operator");
+            }
+            apply_modes_to_chan(client, target_chan, target_array[prefix+2], &(target_array[prefix+3]));
+        }
+        /***********************************************************************************************up write*******/
+    }
+    return OK;
+}
+
+
+
 /*
  * NICK CMD
  */
@@ -438,7 +699,7 @@ int irc_nick_cmd (user* client, char* command) {
     
     /*check argument number*/
     if ((n_strings-prefix)<2) {
-        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
         return OK;
     }
     new_nick=target_array[prefix+1];
@@ -456,7 +717,7 @@ int irc_nick_cmd (user* client, char* command) {
         irc_send_numeric_response(client, ERR_RESTRICTED, ":You don't have permission to do that");
     }
     
-    /***************************************************************************************************************down server semaphores*/
+    /***************************************************************************************************************down server write semaphores*/
     if (user_hasht_find(new_nick)!=NULL) {
         irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ":Nickname already in use");
     }
@@ -492,7 +753,7 @@ int irc_nick_cmd (user* client, char* command) {
         send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
     }    
     
-    /***************************************************************************************************************up server semaphores*/
+    /***************************************************************************************************************up server write semaphores*/
     
     return OK;
 }
@@ -568,7 +829,7 @@ int irc_part_cmd (user* client, char* command) {
     
     /*check argument number*/
     if ((n_strings-prefix)<2) {
-        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
         return OK;
     }
     
@@ -727,7 +988,7 @@ int irc_privmsg_cmd (user* client, char* command) {
     
     /*check argument number*/
     if ((n_strings-prefix)<3) {
-        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
         return OK;
     }
     target=target_array[prefix+1];
@@ -983,7 +1244,7 @@ int irc_join_cmd (user* client, char* command) {
     
     /*check argument number*/
     if ((n_strings-prefix)<2) {
-        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
         return OK;
     }
     
@@ -1047,7 +1308,7 @@ int irc_pass_cmd (user* client, char* command) {
     
     /*check argument number*/
     if ((n_strings-prefix)<2) {
-        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
         return OK;
     }
     
@@ -1076,7 +1337,7 @@ int irc_user_cmd (user* client, char* command) {
     
     /*check argument number*/
     if ((n_strings-prefix)<5) {
-        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Need more parameters");
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
         return OK;
     }
     user=target_array[prefix+1];
@@ -1330,19 +1591,3 @@ int irc_oper_cmd(user *client, char *command) {
     return OK;
 
 }
-
-
-
-    /*split arguments*/
-    
-    /*check argument number (enough?)*/
-    
-    /*check arguments format (correct?)*/
-    
-    /*check user modes (can i do this?)*/
-    
-    /*down semaphores if needed*/
-    
-    /*do something*/
-    
-    /*up semaphores if needed*/

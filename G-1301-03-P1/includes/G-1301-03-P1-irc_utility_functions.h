@@ -35,7 +35,12 @@ int is_special_char(char c);
 int is_digit_char(char c);
 int is_valid_nick(char* nick);
 int is_valid_chname(char* chname);
+int is_valid_pass(char* pass);
 int is_empty_channel(channel* ch);
+char* user_mode_string (char modes);
+char user_mode_from_str (char* str, char* unk, char* oper);
+char* chan_mode_string (unsigned int modes);
+unsigned int chan_mode_from_str(char* str, char* unk, char* oper);
 
 void user_hasht_add(user *item);
 void user_hasht_remove(user *item);

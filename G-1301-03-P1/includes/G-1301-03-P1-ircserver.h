@@ -18,6 +18,10 @@
 #define INVITEONLYCHAN_MSG "%s :Cannot join channel (+i)"
 #define NOSUCHCHANNEL_MSG "%s :No such channel"
 #define NOTONCHANNEL_MSG "%s :You're not on that channel"
+#define UMODEUNKNOWNFLAG_MSG ":Unknown MODE flag"
+#define USERSDONTMATCH_MSG ":Cannot change mode for other users"
+#define UNKNOWNMODE_MSG "x :is unknown mode char to me for %s"
+#define NEEDMOREPARAMS_MSG ":Need more parameters"
 
 #define SERVER_NAME_LENGTH 15
 #define SERVER_LOG_IDENT "IRC_SERVER"
@@ -32,7 +36,7 @@
 #define IRC_MAX_NICK_LENGTH 9
 #define IRC_MAX_PASS_LENGTH 23
 #ifndef ERROR
-        #define ERROR -1
+#define ERROR -1
 #endif
 #define ERROR_WRONG_SYNTAX -2
 #define ERROR_MAX_ARGS -3
@@ -60,7 +64,7 @@ typedef struct {
     char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
     char already_in_server; /*if a particular instance is already in the hash table of clients*/
     channel_lst* channels_llist;
-    UT_hash_handle hh; 
+    UT_hash_handle hh;
 } user;
 
 /*  USER MODES
@@ -82,14 +86,15 @@ typedef struct {
 #define US_MODE_O 32
 #define US_MODE_s 64
 #define USER_REGISTERED 128
+#define US_MODE_NUMBER 7
 #define US_MODE_DEFAULT (US_MODE_i | US_MODE_s | US_MODE_w)
 
 typedef struct {
     char* name;
     char* topic;
     char* pass;
-    unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/  
-    unsigned int users_number; 
+    unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/
+    unsigned int users_number;
     unsigned int users_max; /*if flag l is 1*/
     active_nicks* users_llist;
     active_nicks* operators_llist;
@@ -139,6 +144,7 @@ typedef struct {
 #define CH_MODE_v 16384
 #define CH_MODE_o 32768
 #define CH_MODE_O 65536
+#define CH_MODE_NUMBER 17
 #define CH_MODE_DEFAULT (CH_MODE_O | CH_MODE_o | CH_MODE_n | CH_MODE_t )
 
 /*server data global variable*/
@@ -172,8 +178,8 @@ void irc_server_data_init();
  */
 void *irc_thread_routine(void *arg);
 
-void free_channel (channel* ch);
-void free_user (user* us);
+void free_channel(channel* ch);
+void free_user(user* us);
 
 
 
@@ -208,7 +214,7 @@ void irc_exit_message();
  *      ERROR is returned if arguments are incorrect
  *      ERROR_BAD_SYNTAX is returned if the syntax of the command syntax doesn't fit RFC specs (i.e: exceeds number of arguments)
  */
-int irc_split_cmd (char *cmd, char **target_array, int *prefix, int *n_strings);
+int irc_split_cmd(char *cmd, char **target_array, int *prefix, int *n_strings);
 
 /*
  * returns the position in the array of the first character of the commmand (ignoring prefix and blanks)
@@ -218,23 +224,24 @@ int irc_get_cmd_position(char* cmd);
 
 void *irc_thread_routine(void *arg);
 void irc_exit_message();
-int irc_split_cmd (char *cmd, char *target_array[MAX_CMD_ARGS+2], int *prefix, int *n_strings);
+int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, int *n_strings);
 int irc_get_cmd_position(char* cmd);
-int exec_cmd (int number, user* client, char *msg);
+int exec_cmd(int number, user* client, char *msg);
 int irc_send_numeric_response(user* client, int numeric_response, char *details);
 
 
 int irc_ping_cmd(user *client, char *command);
+int irc_mode_cmd(user *client, char *command);
 int irc_nick_cmd(user *client, char *command);
 int irc_pass_cmd(user *client, char *command);
-int irc_user_cmd (user* client, char* command);
-int irc_privmsg_cmd (user* client, char* command);
+int irc_user_cmd(user* client, char* command);
+int irc_privmsg_cmd(user* client, char* command);
 int irc_oper_cmd(user *client, char *command);
-int irc_names_cmd (user* client, char* command);
-int irc_join_cmd (user* client, char* command);
+int irc_names_cmd(user* client, char* command);
+int irc_join_cmd(user* client, char* command);
 int irc_list_cmd(user *client, char *command);
 int irc_who_cmd(user *client, char *command);
-int irc_part_cmd (user* client, char* command);
+int irc_part_cmd(user* client, char* command);
 int irc_quit_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
 
