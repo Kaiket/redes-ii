@@ -5,14 +5,16 @@
 #include "uthash.h"
 #include "utlist.h"
 
+/*server info*/
 #define SERVER_NAME "irc_server_V1.0"
 #define WELCOME_MSG ":Welcome to this IRC server %s"
 #define HOST_MSG ":Your host is irc_server_V1.0, running version 1.0"
 #define DATE_MSG ":This server was created in February 2014"
-#define MYINFO_MSG "irc_server_V1.0 1.0 sOorwia IeblktrspqnmiavoO"
+#define MYINFO_MSG "irc_server_V1.0 1.0 sOorwia lktio"
 
+/*server replies*/
 #define CANNOTSENDTOCHAN_MSG ":Cannot send to channel %s"
-#define NICK_NFOUND_MSG ":Nick not found %s"
+#define NICK_NFOUND_MSG "%s :No such nick/channel"
 #define USER_AWAY_MSG ":User %s is away"
 #define ILLEGAL_CHNAME ":Illegal channel name"
 #define INVITEONLYCHAN_MSG "%s :Cannot join channel (+i)"
@@ -22,7 +24,12 @@
 #define USERSDONTMATCH_MSG ":Cannot change mode for other users"
 #define UNKNOWNMODE_MSG "x :is unknown mode char to me for %s"
 #define NEEDMOREPARAMS_MSG ":Need more parameters"
+#define CHANOPRIVSNEEDED_MSG "%s :You're not channel operator"
+#define NOSUCHNICK_MSG NICK_NFOUND_MSG
+#define USERONCHANNEL_MSG "%s %s :is already on channel"
+#define NOPRIVILEGES_MSG ":Permission Denied- You're not an IRC operator"
 
+/*server constants*/
 #define SERVER_NAME_LENGTH 15
 #define SERVER_LOG_IDENT "IRC_SERVER"
 #define SERVER_MAX_CONNECTIONS INT_MAX
@@ -36,95 +43,10 @@
 #define IRC_MAX_NICK_LENGTH 9
 #define IRC_MAX_PASS_LENGTH 23
 #ifndef ERROR
-#define ERROR -1
+        #define ERROR -1
 #endif
 #define ERROR_WRONG_SYNTAX -2
 #define ERROR_MAX_ARGS -3
-
-#define OPER_USER "someuser"
-#define OPER_PASS "somepass"
-
-typedef struct t {
-    char nick[IRC_MAX_NICK_LENGTH + 1];
-    struct t *next;
-} ban, invite, active_nicks;
-
-typedef struct ch {
-    char *ch_name;
-    struct ch *next;
-} channel_lst;
-
-typedef struct {
-    int socket;
-    char nick[IRC_MAX_NICK_LENGTH + 1]; /*maximum nick length + \0*/
-    char* user_name;
-    char* host_name;
-    char* server_name;
-    char* real_name;
-    char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
-    char already_in_server; /*if a particular instance is already in the hash table of clients*/
-    channel_lst* channels_llist;
-    UT_hash_handle hh;
-} user;
-
-/*  USER MODES
-           a - user is flagged as away;
-           i - marks a users as invisible;
-           w - user receives wallops;
-           r - restricted user connection;
-           o - operator flag;
-           O - local operator flag;
-           s - marks a user for receipt of server notices.
- */
-
-/*USER MODES FLAGS*/
-#define US_MODE_a 1
-#define US_MODE_w 2
-#define US_MODE_i 4
-#define US_MODE_r 8
-#define US_MODE_o 16
-#define US_MODE_O 32
-#define US_MODE_s 64
-#define USER_REGISTERED 128
-#define US_MODE_NUMBER 7
-#define US_MODE_DEFAULT (US_MODE_i | US_MODE_s | US_MODE_w)
-
-typedef struct {
-    char* name;
-    char* topic;
-    char* pass;
-    unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/
-    unsigned int users_number;
-    unsigned int users_max; /*if flag l is 1*/
-    active_nicks* users_llist;
-    active_nicks* operators_llist;
-    invite* invited_llist; /*linked list of nicks invited to channel*/
-    UT_hash_handle hh;
-} channel;
-
-/*      CHANNEL MODES
- *      O - give "channel creator" status;
-        o - give/take channel operator privilege;
-        v - give/take the voice privilege;
-
-        a - toggle the anonymous channel flag;
-        i - toggle the invite-only channel flag;
-        m - toggle the moderated channel;
-        n - toggle the no messages to channel from clients on the
-            outside;
-        q - toggle the quiet channel flag;
-        p - toggle the private channel flag;
-        s - toggle the secret channel flag;
-        r - toggle the server reop channel flag;
-        t - toggle the topic settable by channel operator only flag;
-
-        k - set/remove the channel key (password);
-        l - set/remove the user limit to channel;
-
-        b - set/remove ban mask to keep users out;
-        e - set/remove an exception mask to override a ban mask;
-        I - set/remove an invitation mask to automatically override
-            the invite-only flag;*/
 
 /*CHANNEL MODES FLAGS*/
 #define CH_MODE_I 1
@@ -147,12 +69,80 @@ typedef struct {
 #define CH_MODE_NUMBER 17
 #define CH_MODE_DEFAULT (CH_MODE_O | CH_MODE_o | CH_MODE_n | CH_MODE_t )
 
-/*server data global variable*/
+/*USER MODES FLAGS*/
+#define US_MODE_a 1
+#define US_MODE_w 2
+#define US_MODE_i 4
+#define US_MODE_r 8
+#define US_MODE_o 16
+#define US_MODE_O 32
+#define US_MODE_s 64
+#define USER_REGISTERED 128
+#define US_MODE_NUMBER 7
+#define US_MODE_DEFAULT (US_MODE_i | US_MODE_s | US_MODE_w)
+
+/*user and key for oper command*/
+#define OPER_USER "someuser"
+#define OPER_PASS "somepass"
+
+/*
+ * linked list of nicks struct
+ */
+typedef struct t {
+    char nick[IRC_MAX_NICK_LENGTH + 1];
+    struct t *next;
+} invite, active_nicks;
+
+/*
+ * linked list of channel names struct
+ */
+typedef struct ch {
+    char *ch_name;
+    struct ch *next;
+} channel_lst;
+
+/*
+ * main struct for a user
+ */
+typedef struct {
+    int socket;
+    char nick[IRC_MAX_NICK_LENGTH + 1]; /*maximum nick length + \0*/
+    char* user_name;
+    char* host_name;
+    char* server_name;
+    char* real_name;
+    char reg_modes; /*More significative bit indicates registered, the rest are for flag modes: sOoriwa */
+    char already_in_server; /*if a particular instance is already in the hash table of clients*/
+    channel_lst* channels_llist;
+    UT_hash_handle hh;
+} user;
+
+/*
+ * main struct for a channel
+ * 
+ */
+typedef struct {
+    char* name;
+    char* topic;
+    char* pass;
+    unsigned int modes; /*0...0, OovaimnqpsrtklbeI*/
+    unsigned int users_number;
+    unsigned int users_max; /*if flag l is 1*/
+    active_nicks* users_llist;
+    active_nicks* operators_llist;
+    invite* invited_llist; /*linked list of nicks invited to channel*/
+    UT_hash_handle hh;
+} channel;
+
+/*
+ * server data global variable
+ * 
+ * contains a hash table for users, a hash table for channels and semaphores to ensure safe reading/writing
+ */
 struct {
     channel* channels_hasht;
     int readers_num, readers, writer, mutex_access, mutex_rvariables;
     user* users_hasht;
-    ban* banned_users_llist;
 } server_data;
 
 /*
@@ -231,6 +221,18 @@ int exec_cmd(int number, user* client, char *msg);
 int irc_send_numeric_response(user* client, int numeric_response, char *details);
 
 
+/*
+ * Each of the following functions execute an irc command
+ * Parameters:
+ *      client: user struct which wants to execute the command
+ *      command: command line following rfc specs for such command
+ * Details:
+ *      Executes the command extracting required parameters from the string passed.
+ *      Command execution follows IRC RFC specification, sending confirmation/error/replies IRC messages to targets.
+ *      These functions only return ERROR when the command string is not well formed (not enough parameters) or when errors regarding memory allocation
+ *      ocurred.
+ *      Each function ensures mutex.
+ */
 int irc_ping_cmd(user *client, char *command);
 int irc_mode_cmd(user *client, char *command);
 int irc_nick_cmd(user *client, char *command);
@@ -246,5 +248,6 @@ int irc_who_cmd(user *client, char *command);
 int irc_part_cmd(user* client, char* command);
 int irc_quit_cmd(user *client, char *command);
 int irc_squit_cmd(user *client, char *command);
+int irc_invite_cmd (user* client, char* command);
 
 #endif

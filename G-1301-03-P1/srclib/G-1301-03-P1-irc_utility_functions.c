@@ -240,9 +240,47 @@ char* user_mode_string(char modes) {
     return str;
 }
 
+char* user_mode_change_string(char modes, char op) {
+    char* str = NULL;
+    int i = 1;
+    if (!(str = (char*) malloc(1 + US_MODE_NUMBER + 1))) return NULL;
+    str[0] = op;
+    if (user_mode_a(modes)) {
+        str[i] = 'a';
+        ++i;
+    }
+    if (user_mode_i(modes)) {
+        str[i] = 'i';
+        ++i;
+    }
+    if (user_mode_w(modes)) {
+        str[i] = 'w';
+        ++i;
+    }
+    if (user_mode_r(modes)) {
+        str[i] = 'r';
+        ++i;
+    }
+    if (user_mode_o(modes)) {
+        str[i] = 'o';
+        ++i;
+    }
+    if (user_mode_O(modes)) {
+        str[i] = 'O';
+        ++i;
+    }
+    if (user_mode_s(modes)) {
+        str[i] = 's';
+        ++i;
+    }
+    str[i] = '\0';
+    return str;
+}
+
 char user_mode_from_str(char* str, char* unk, char* oper) {
     char mode = 0;
     int i = 0;
+    *unk=0;
     if (str[0] == '-') {
         *oper = '-';
         ++i;
@@ -296,6 +334,7 @@ char* chan_mode_string(unsigned int modes) {
 unsigned int chan_mode_from_str(char* str, char* unk, char* oper) {
     unsigned int mode = 0;
     int i = 0;
+    *unk=0;
     if (str[0] == '-') {
         *oper = '-';
         ++i;
