@@ -1,0 +1,49 @@
+.TH "includes/G-1301-03-P1-daemonize.h" 3 "Thu Mar 13 2014" "Version 1.0" "G-1301-03-P1" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-1301-03-P1-daemonize.h \- 
+.SH SYNOPSIS
+.br
+.PP
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "int \fBdaemonize\fP (const char *ident)"
+.br
+.RI "\fIRuns in background\&. \fP"
+.in -1c
+.SH "Detailed Description"
+.PP 
+Daemon function\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "int daemonize (const char *ident)"
+
+.PP
+Runs in background\&. First of all it opens a connection with the system logger\&. The string pointed to by ident is prepended to every message\&. After that, runs the calling process in background mode\&. Signals SIGCHLD and SIGPWR will kill the process\&.
+.PP
+To test the function the program G-1301-03-P1-daemonize_test has been made\&. This program runs a process in background mode and pauses itself waiting for a signal to kill it\&. It shows the PID and PPID of the process\&. If the tty is closed after executing this program, the process won't stop until a signal (SIGPWR or SIGCHLD) is delivered\&. Any of this facts will be registered in the log system\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIident\fP name of the log identity
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+0 on success\&. -1 on failure, and it writes the description of the error in the log file closing the connection after it\&. 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for G-1301-03-P1 from the source code\&.

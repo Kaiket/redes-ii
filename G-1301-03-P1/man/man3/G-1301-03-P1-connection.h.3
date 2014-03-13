@@ -1,0 +1,149 @@
+.TH "includes/G-1301-03-P1-connection.h" 3 "Thu Mar 13 2014" "Version 1.0" "G-1301-03-P1" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-1301-03-P1-connection.h \- 
+.SH SYNOPSIS
+.br
+.PP
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "int \fBinit_server\fP (int port, int max_connections)"
+.br
+.RI "\fIStarts a new server\&. \fP"
+.ti -1c
+.RI "int \fBaccept_connections\fP (int socket)"
+.br
+.RI "\fIStarts accepting incoming connexions\&. \fP"
+.ti -1c
+.RI "int \fBclose_connection\fP (int socket)"
+.br
+.RI "\fIClose a connection\&. \fP"
+.ti -1c
+.RI "int \fBsend_msg\fP (int socket, void *data, size_t length, size_t segmentsize)"
+.br
+.RI "\fISends messages through a socket\&. \fP"
+.ti -1c
+.RI "int \fBreceive_msg\fP (int socket, void **data, size_t segmentsize, void *enddata, size_t enddata_len)"
+.br
+.RI "\fIReceive messages through a socket\&. \fP"
+.in -1c
+.SH "Detailed Description"
+.PP 
+Functions for connecting processes\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "int accept_connections (intsocket)"
+
+.PP
+Starts accepting incoming connexions\&. It starts listening and accepting conming connections through the socket which file descriptor is the argumment 'socket'\&. This function is a blocking function, what means that when it is called, the calling process will be blocked until receive a connection request\&. This function writes in the system logger\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIsocket\fP file descriptor of the socket for which the connections are going to be accepted\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+On success, the file descriptor of the client socket\&. ERROR code on failure, which is defined in \fBG-1301-03-P1-types\&.h\fP header file\&. 
+.RE
+.PP
+
+.SS "int close_connection (intsocket)"
+
+.PP
+Close a connection\&. Close the established connection with the socket which file descriptor is the 'socket' argument\&. For further information, see close(2)\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIhandler\fP file descriptor of the socket which connection is going to be closed\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+the same as close(2) function\&. 
+.RE
+.PP
+
+.SS "int init_server (intport, intmax_connections)"
+
+.PP
+Starts a new server\&. Initializes a server opening a TCP socket, binding his address to the specified port (argument), and setting the queue length to max_connections (argument)\&. Returns the socket descriptor or an error code and writes a message in the system log describing such error\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIport\fP port to bind the adress of the created TCP socket\&. 
+.br
+\fImax_connections\fP number of the queue length
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+On failure, an error code defined in \fBG-1301-03-P1-types\&.h\fP is returned\&. On success the file descriptor of the new socket is returned\&. 
+.RE
+.PP
+
+.SS "int receive_msg (intsocket, void **data, size_tsegmentsize, void *enddata, size_tenddata_len)"
+
+.PP
+Receive messages through a socket\&. Receive messages to 'data' as fragments of 'segmentsize' bytes from socket with 'socket' file descriptor\&. It allocate memory for *data so it is necessary to free it\&.
+.PP
+It stops receiving if the received fragment size is less than segmentsize or if the last received segment ends with 'enddata'
+.PP
+If 'segmentsize' if set to zero or less, it is used the MSS of TCP\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIsocket\fP socket descriptor from where received de message\&. 
+.br
+\fIdata\fP pointer to pointer to data\&. 
+.br
+\fIsegmentsize\fP max capacity of sending\&. 
+.br
+\fIenddata\fP data that point out end of data\&. 
+.br
+\fIenddata_len\fP size of enddata 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Bytes received on success\&. ERROR on failure (which is defined in \fBG-1301-03-P1-types\&.h\fP), and it writes the description of the error in the log file\&. 
+.RE
+.PP
+
+.SS "int send_msg (intsocket, void *data, size_tlength, size_tsegmentsize)"
+
+.PP
+Sends messages through a socket\&. Send messages from 'data' as fragments of 'segmentsize' bytes to socket with 'socket' file descriptor\&.
+.PP
+If 'segmentsize' if set to zero or less, it is used the MSS of TCP\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIsocket\fP socket descriptor to where send the message\&. 
+.br
+\fIdata\fP pointer to data which is going to be sent\&. 
+.br
+\fIlength\fP length of data\&. 
+.br
+\fIsegmentsize\fP max capacity of sending\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+Bytes sended on success\&. ERROR on failure (which is defined in \fBG-1301-03-P1-types\&.h\fP), and it writes the description of the error in the log file\&. 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for G-1301-03-P1 from the source code\&.
