@@ -16,26 +16,28 @@ typedef struct {
 } Thread_handler;
 
 /**
- * @brief [brief description]
- * @details [long description]
+ * @brief Launch a new thread for socket operation management.
+ * @details The thread launched execute the thread_routine.
  * 
- * @param client_sock [description]
- * @param thread_routine [description]
+ * @param client_sock the socket of the client which is going to be attended.
+ * @param thread_routine the routine to execute.
  * 
- * @return [description]
+ * @return On success, it returns OK. On failure, it returns ERROR and log the error.
  */
 int launch_thread(int client_sock, void* (*thread_routine) (void *arg));
 
 /**
- * @brief [brief description]
- * @details [long description]
- * @return [description]
+ * @brief Performs a non-blocking join for every active thread currently in the array.
+ * @details 
+ * Sets the value of array-first-free global variable to the first non-active thread after the join
+ * @return the fisrt available slot on the array.
  */
 int nbjoin_threads (void);
 
 /**
- * @brief [brief description]
- * @details [long description]
- * @return [description]
+ * @brief Seeks the thread_array for the first non-active thread and sets array_first_free value accordingly.
+ * @details 
+ * Use not recommended, it is better to perform a nbjoin_threads call and let it set the value.
+ * @return The first available slot on the array or FULL_ARRAY if it is full.
  */
 int seek_array_first_free (void);
