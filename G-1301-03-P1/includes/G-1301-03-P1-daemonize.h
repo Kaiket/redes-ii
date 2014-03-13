@@ -2,13 +2,13 @@
 #define __DAEMONIZER_H
 
 /**
- * @file   G-1301-03-P1-daemonice.c¡h
- * @author Enrique Cabrerizo Fernandez, Guillermo Ruiz Alvarez
- * @date   Feb, 2013
+ * @file G-1301-03-P1-daemonize.h
+ * @details Daemon function.
+ * @author Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
 .*/
 
-/**
- * @brief runs in background
+/** 
+ * @brief Runs in background.
  * 
  * @details Opens a connection with the system logger. The 
  * string  pointed to by ident is prepended to every message.
