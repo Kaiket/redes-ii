@@ -28,6 +28,7 @@
 #define NOSUCHNICK_MSG NICK_NFOUND_MSG
 #define USERONCHANNEL_MSG "%s %s :is already on channel"
 #define NOPRIVILEGES_MSG ":Permission Denied- You're not an IRC operator"
+#define CHANNELISFULL_MSG "%s :Cannot join channel (+l)"
 
 /*server constants*/
 #define SERVER_NAME_LENGTH 15

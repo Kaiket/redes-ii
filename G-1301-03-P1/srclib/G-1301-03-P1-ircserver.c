@@ -206,6 +206,26 @@ void free_user(user* us) {
     return;
 }
 
+void irc_server_data_free(){
+
+    channel *ch, *ch_tmp;
+    user *usr, *usr_tmp;
+
+    HASH_ITER(hh, server_data.channels_hasht, ch, ch_tmp){
+        free_channel(ch);
+    }
+
+    HASH_ITER(hh, server_data.users_hasht, usr, usr_tmp){
+        free_user(usr);
+    }
+
+    semaphore_rm(server_data.readers);
+    semaphore_rm(server_data.writer);
+    semaphore_rm(server_data.mutex_access);
+    semaphore_rm(server_data.mutex_rvariables);
+    return;
+}
+
 /*
  * Function: irc_exit_message
  * Implementation comments:
@@ -296,10 +316,11 @@ int irc_get_cmd_position(char* cmd) {
     return ERROR_WRONG_SYNTAX;
 }
 
+
 /*
  * Function: exec_cmd
  * Implementation comments:
- * 
+ *      It's just a switch...
  */
 int exec_cmd(int number, user* client, char *msg) {
     int ret;
@@ -587,7 +608,7 @@ int apply_modes_to_chan(user *us, channel* ch, char* modestr, char** modeargs) {
                 break;
                 
             case 'l':
-                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 20 + 1 + strlen(IRC_MSG_END) + 1))) continue;
                 wanted_modes=(wanted_modes & ~CH_MODE_l);
                 if (oper=='+'){
                     if (arg_count>=3) {free(msg); continue;}                    
@@ -603,7 +624,7 @@ int apply_modes_to_chan(user *us, channel* ch, char* modestr, char** modeargs) {
                         continue;
                     }
                     ch->users_max=atoi(modeargs[arg_count]);
-                    sprintf(msg, ":%s MODE %s +l%s", us->nick, ch->name,  IRC_MSG_END);
+                    sprintf(msg, ":%s MODE %s +l %u%s", us->nick, ch->name, ch->users_max, IRC_MSG_END);
                     arg_count++;
                 }
                 else {
@@ -978,7 +999,7 @@ int irc_squit_cmd (user* client, char* command) {
         irc_send_numeric_response(client, ERR_NOPRIVILEGES, NOPRIVILEGES_MSG);
         return OK;
     }
-    free_server();
+    irc_server_data_free();
     exit(0);
 }
 
@@ -1188,7 +1209,7 @@ int irc_names_cmd (user* client, char* command) {
 
 
 int user_join_chan(user *client,channel *chan,char *pass) {
-    char *err_inviteonly, *full_reply=NULL, *chantopic;
+    char *err, *full_reply=NULL, *chantopic;
 
     if (find_chname_in_llist(chan->name, &(client->channels_llist))) return OK;  /*if already in the channel return*/
     
@@ -1207,12 +1228,24 @@ int user_join_chan(user *client,channel *chan,char *pass) {
     
     if (chan_mode_i(chan->modes)) { /*invite-only channel*/
         if (!find_nick_in_llist(client->nick, &(chan->invited_llist))) {
-            if (!(err_inviteonly=(char*)malloc(sizeof(char)*(strlen(INVITEONLYCHAN_MSG) + strlen(chan->name) + 1)))) {
-                syslog(LOG_NOTICE, "user_join_chan error in malloc 1");
+            if (!(err=(char*)malloc(sizeof(char)*(strlen(INVITEONLYCHAN_MSG) + strlen(chan->name) + 1)))) {
                 return ERROR;
             }
-            sprintf(err_inviteonly, INVITEONLYCHAN_MSG, chan->name);
-            irc_send_numeric_response(client ,ERR_INVITEONLYCHAN , err_inviteonly);
+            sprintf(err, INVITEONLYCHAN_MSG, chan->name);
+            irc_send_numeric_response(client ,ERR_INVITEONLYCHAN , err);
+            free(err);
+            return ERROR;
+        }
+    }
+    
+    if (chan_mode_l(chan->modes)) { /*number limited channel*/
+        if (chan->users_max<=chan->users_number) {
+            if (!(err=(char*)malloc(sizeof(char)*(strlen(CHANNELISFULL_MSG) + strlen(chan->name) + 1)))) {
+                return ERROR;
+            }
+            sprintf(err, CHANNELISFULL_MSG, chan->name);
+            irc_send_numeric_response(client ,ERR_CHANNELISFULL , err);
+            free(err);
             return ERROR;
         }
     }
@@ -1221,13 +1254,11 @@ int user_join_chan(user *client,channel *chan,char *pass) {
     if (add_chname_to_llist(chan->name, &(client->channels_llist))==ERROR) return ERROR;
     if (user_mode_o(client->reg_modes) || user_mode_O(client->reg_modes)) {
         if (add_nick_to_llist(client->nick, &(chan->operators_llist))==ERROR) {
-            syslog(LOG_NOTICE, "debug :Entra como operador %s", client->nick);
             remove_chname_from_llist(chan->name, &(client->channels_llist));
             return ERROR;
         }
     }
     else {
-        syslog(LOG_NOTICE, "debug: Entra como user %s", client->nick);
         if (add_nick_to_llist(client->nick, &(chan->users_llist))==ERROR) {
             remove_chname_from_llist(chan->name, &(client->channels_llist));
             return ERROR;
@@ -1237,7 +1268,6 @@ int user_join_chan(user *client,channel *chan,char *pass) {
     
     /*Sending replies*/
     if (!(full_reply=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("JOIN") + 1 + strlen(chan->name) + strlen(IRC_MSG_END) + 1)))) {
-        syslog(LOG_NOTICE, "user_join_chan error in malloc 2");
         return ERROR;
     }
     sprintf(full_reply, ":%s JOIN %s%s", client->nick, chan->name, IRC_MSG_END);
@@ -1469,6 +1499,12 @@ int irc_who_cmd(user *client, char *command){
     channel *ch_found;
     active_nicks* nick;
 
+    /*if not registered action not allowed*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }
+    
     split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
 
     if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
@@ -1550,6 +1586,12 @@ int irc_list_cmd(user *client, char *command){
     char *param, *saveptr, *details;
     channel *ch_found, *tmp;
 
+    /*if not registered action not allowed*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }
+    
     split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
 
     if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
@@ -1641,6 +1683,12 @@ int irc_oper_cmd(user *client, char *command) {
     channel* ch_found;
     channel_lst *chlst;
 
+    /*if not registered action not allowed*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }    
+    
     split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
 
     if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
@@ -1699,6 +1747,12 @@ int irc_topic_cmd(user *client, char *command) {
     char *details;
     channel* ch_found;
 
+    /*if not registered action not allowed*/
+    if (!user_registered(client->reg_modes)) {
+        irc_send_numeric_response(client, ERR_NOTREGISTERED, ":You are not registered.");
+        return OK;
+    }
+    
     split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
 
     if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
@@ -1764,7 +1818,7 @@ int irc_topic_cmd(user *client, char *command) {
 
                 }
                 else{
-                    if(!find_nick_in_llist(client->nick, &(ch_found->operators_llist))){
+                    if(!(find_nick_in_llist(client->nick, &(ch_found->operators_llist))) && !(chan_mode_t(ch_found->modes))) {
                         details = malloc(strlen(target_array[1]) + 1 + strlen(":You're not channel operator") + 1);
                         sprintf(details, "%s :You're not channel operator", target_array[1]);
                         irc_send_numeric_response(client, ERR_CHANOPRIVSNEEDED, details);
@@ -1867,7 +1921,7 @@ int irc_invite_cmd (user* client, char* command) {
     else if (find_nick_in_llist(client->nick, &(target_ch->invited_llist))) {
         notify=1;
     }
-    else if (add_nick_to_llist(target_us->nick, &(target_ch->invited_llist))) {
+    else if (add_nick_to_llist(target_us->nick, &(target_ch->invited_llist))==OK) {
     	notify=1;
     }
     if (notify) {
@@ -1887,25 +1941,4 @@ int irc_invite_cmd (user* client, char* command) {
     if (msg_to_targ) free(msg_to_targ);
     if (msg_to_user) free(msg_to_user);
     return OK;
-}
-
-
-void irc_server_data_free(){
-
-    channel *ch, *ch_tmp;
-    user *usr, *usr_tmp;
-
-    HASH_ITER(hh, server_data.channels_hasht, ch, ch_tmp){
-        free_channel(ch);
-    }
-
-    HASH_ITER(hh, server_data-users_hasht, usr, usr_tmp){
-        free_user(usr);
-    }
-
-    semaphore_rm(server_data.readers);
-    semaphore_rm(server_data.writer);
-    semaphore_rm(server_data.mutex_access);
-    semaphore_rm(server_data.mutex_rvariables);
-
 }
