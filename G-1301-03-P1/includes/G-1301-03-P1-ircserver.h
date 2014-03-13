@@ -180,6 +180,7 @@ void *irc_thread_routine(void *arg);
 
 void free_channel(channel* ch);
 void free_user(user* us);
+void irc_server_data_free();
 
 
 

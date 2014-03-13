@@ -1776,3 +1776,24 @@ int irc_topic_cmd(user *client, char *command) {
 
     return OK;
 }
+
+
+void irc_server_data_free(){
+
+    channel *ch, *ch_tmp;
+    user *usr, *usr_tmp;
+
+    HASH_ITER(hh, server_data.channels_hasht, ch, ch_tmp){
+        free_channel(ch);
+    }
+
+    HASH_ITER(hh, server_data-users_hasht, usr, usr_tmp){
+        free_user(usr);
+    }
+
+    semaphore_rm(server_data.readers);
+    semaphore_rm(server_data.writer);
+    semaphore_rm(server_data.mutex_access);
+    semaphore_rm(server_data.mutex_rvariables);
+
+}

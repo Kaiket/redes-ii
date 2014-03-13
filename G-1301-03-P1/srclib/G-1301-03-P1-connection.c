@@ -16,6 +16,11 @@
 #include "../includes/G-1301-03-P1-connection.h"
 #include "../includes/G-1301-03-P1-types.h"
 
+ /*LOW LEVEL FUNCTIONS*/
+int open_TCP_socket();
+int bind_socket(int socket, int port);
+int set_queue_length(int socket, int length);
+
 
 /*HIGH LEVEL FUNCTIONS (public)*/
 
@@ -57,8 +62,10 @@ int init_server(int port, int max_connections) {
 
 }
 
-/*Función que pondrá al servidor a “escuchar” peticiones de conexión. Devolverá un código de error si la
-conexión no se ha realizado.
+/*
+ * Function: accept_connections
+ * Implementation comments:
+ *      none
  */
 int accept_connections(int socket) {
     struct sockaddr_in client;
@@ -83,10 +90,12 @@ int accept_connections(int socket) {
 }
 
 
-/*Función que cierra la comunicación. Tendrá como parámetro el handler de la conexión a cerrar y devolverá
-un código de error.
- */
 
+/*
+ * Function: close_connection
+ * Implementation comments:
+ *      none
+ */
 int close_connection(int socket) {
     return close(socket);
 }
@@ -186,8 +195,7 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
 
 /*LOW LEVEL FUNCTIONS (private)*/
 
-/*Función que abre un socket de servidor TCP. No tiene parámetros. Devolverá un código de error o el handler
-del socket según corresponda.*/
+/*Opens a TCP socket*/
 int open_TCP_socket() {
     int fd;
     fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -195,9 +203,7 @@ int open_TCP_socket() {
     return ERROR;
 }
 
-/* Función que asigna un puerto al socket. Tendrá dos parámetros que serán el handler del socket y el número
-de puerto. Devolverá un código de error.
- */
+/* Binds a socket to a port*/
 int bind_socket(int socket, int port) {
     struct sockaddr_in sa;
 
@@ -209,9 +215,7 @@ int bind_socket(int socket, int port) {
     return bind(socket, (struct sockaddr *) &sa, sizeof (struct sockaddr));
 }
 
-/*Función que determina la longitud de la cola. Tendrá dos parámetros que serán el handler del socket y la
-longitud de la cola. Devolverá un código de error.
- */
+/*Sets the queue length of the socket.*/
 int set_queue_length(int socket, int length) {
     if (length < 1) return ERROR_Q_LENGTH;
     return listen(socket, length);

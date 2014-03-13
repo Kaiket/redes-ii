@@ -10,7 +10,7 @@
 /** 
  * @brief Runs in background.
  * 
- * @details Opens a connection with the system logger. The 
+ * @details First of all it opens a connection with the system logger. The 
  * string  pointed to by ident is prepended to every message.
  * After that, runs the calling process in background mode.
  * Signals SIGCHLD and SIGPWR will kill the process.
