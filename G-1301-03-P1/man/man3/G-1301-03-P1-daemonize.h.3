@@ -31,8 +31,6 @@ Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
 .PP
 Runs in background\&. First of all it opens a connection with the system logger\&. The string pointed to by ident is prepended to every message\&. After that, runs the calling process in background mode\&. Signals SIGCHLD and SIGPWR will kill the process\&.
 .PP
-To test the function the program G-1301-03-P1-daemonize_test has been made\&. This program runs a process in background mode and pauses itself waiting for a signal to kill it\&. It shows the PID and PPID of the process\&. If the tty is closed after executing this program, the process won't stop until a signal (SIGPWR or SIGCHLD) is delivered\&. Any of this facts will be registered in the log system\&.
-.PP
 \fBParameters:\fP
 .RS 4
 \fIident\fP name of the log identity

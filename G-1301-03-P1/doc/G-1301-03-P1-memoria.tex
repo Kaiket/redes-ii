@@ -1,0 +1,120 @@
+\documentclass{mathnotes}
+\usepackage{mathnotes}
+\usepackage{listings}
+
+\newcommand{\theauthor}{Enrique Cabrerizo Fernández\and Guillermo Ruiz Álvarez}
+\newcommand{\thetitle}{Memoria Práctica 1\\Redes de comunicaciones II}
+
+\title{\thetitle}
+\author{\theauthor}
+\date{Curso 2013 - 2014\\Universidad Autónoma de Madrid}
+
+\begin{document}
+
+\section{Introducción y descripción}
+En este documento se detalla el proceso de elaboración de un servidor \href{http://es.wikipedia.org/wiki/Internet_Relay_Chat}{IRC} que sigue las directrices especificadas en el \href{https://tools.ietf.org/html/rfc2812}{RFC 2812}.
+
+El servidor se ejecutará en modo daemon (background) en sistemas Linux. El desarrollo se ha realizado sobre dos máquinas con Ubuntu con el  \href{https://wiki.ubuntu.com/Kernel/Release} {kernel 3.02 y 3.12}.\footnote{No se asegura el funcionamiento correcto del daemon en máquinas con Ubuntu y un kernel superior al 3.10}.
+
+Las pruebas del funcionamiento del servidor y todos los comandos que acepta han sido realizadas sobre \texttt{telnet} y \href{http://xchat.org/}{xchat}. Dichas pruebas se detallarán más adelante en este mismo documento.
+
+Para realizar este proyecto, los autores han realizado una librería referente a conexiones entre procesos e hilos que también será detallada.
+
+A continuación se explicará la organización de directorios y ficheros, que es crucial para el correcto funcionamiento del programa \texttt{make} con el Makefile proporcionado. 
+
+\section{Organización de directorios y ficheros.}
+Los ficheros del proyecto se han organizado de la siguiente forma:
+
+El directorio raíz, cuyo nombre es \texttt{G-1301-03-P1} contiene los siguientes directorios:
+
+\begin{itemize}
+\item \textbf{includes} contiene los ficheros de cabecera generados para la elaboración de librerias y el programa principal.
+
+\item \textbf{lib} contiene la libreria generada para realizar el programa principal.
+
+\item \textbf{man} contiene los manuales\footnote{Estos manuales han sido generados con doxydoc de doxygen} de las funciones de la librería. Para acceder a ellos basta ejecutarlos con el programa \texttt{man}.
+
+\item \textbf{obj} contiene los ficheros objeto generados en la compilación.
+
+\item \textbf{src} contiene los ficheros fuente que generarán un ejecutable. Típicamente son programas de prueba (tests) o el programa principal.
+
+\item \textbf{srclib} contiene los ficheros fuente que generarán los objetos de la librería.
+\end{itemize}
+
+En el directorio raíz se encuentran el fichero Makefile necesario para la compilación y enlace de los archivos además del fichero de configuración de Doxygen.
+
+\section{Makefile}
+Para compilar y enlazar se proporciona un fichero Makefile a ejecutar con el programa \texttt{make}.
+
+\subsection{Directivas}
+Las directivas proporcionadas son las siguientes:
+
+\begin{itemize}
+\item \textbf{all} genera todos los binarios en el directorio raíz\footnote{incluyendo los ficheros objeto necesarios para ello}. Estos ficheros son:
+
+\subitem G-1301-03-P1-main
+\subitem G-1301-03-P1-semaphores$\_$test
+\subitem G-1301-03-P1-connection$\_$test
+\subitem G-1301-03-P1-daemonize$\_$test
+\subitem G-1301-03-P1-irc$\_$split$\_$test
+
+\item \textbf{obj/*.o} donde * es el nombre de un objeto. En este caso se compilará lo necesario para compilar el objeto.
+
+\item \textbf{compress}, \textbf{pack}, \textbf{tar}, \textbf{tgz}. Cualquiera de estas directivas ejecutan el comando clean y comprimen la práctica a un fichero tgz que será colocado en el directorio padre del raíz de la práctica.
+
+\item \textbf{clean}, \textbf{clear}. Cualquiera de estas directivas eliminan el fichero tgz, los objeto y los ejecutables.
+
+\item\textbf{G-1301-03-P1-libnetworks.a} genera la librería \texttt{G-1301-03-P1-libnetworks.a}.
+\end{itemize}
+
+\subsection{Construcción del Makefile}
+El archivo Makefile (los comandos utilizados son de \href{https://www.gnu.org/software/make/manual/make.html#Top}{GNU Make}) se ha realizado siguiendo las siguientes reglas, de forma que puede ser utilizado por cualquier usuario que siga las mismas:
+\begin{itemize}
+\item Seguir la organización de directorios especificada.
+\item No existen ficheros de cabecera para los ficheros fuente de src.
+\item Todos los ficheros de srclib tienen un fichero de cabecera asociado.
+\end{itemize}
+Para cambiar el nombre de los directorios o añadir ficheros de cabecera extra, basta con modificar las macros al incio del fichero Makefile.
+
+\section{Funciones de librería}
+Para desarrollar el proyecto, se han realizado ciertas funciones independientes al mismo. Estas funciones son, en su mayoría, genéricas e independientes del servidor y nos permiten manejar los siguientes escenarios.
+
+\begin{itemize}
+\item \textbf{G-1301-03-P1-daemonize} ejecutar un programa en modo daemon.
+
+\item \textbf{G-1301-03-P1-connection} manejar conexiones TCP.
+
+\item \textbf{G-1301-03-P1-parser} parsear cadenas.
+
+\item \textbf{G-1301-03-P1-semaphores} manejar semáforos y problemas de concurrencia de lectura y escritura.
+
+\item \textbf{G-1301-03-P1-thread$\_$handling} manejar hilos asociados a conexiones.
+\end{itemize}
+
+La descripción precisa de todas estas funciones se encuentra en la páginas de manual (\texttt{man pages}) realizadas por los autores en el directorio correspondiente.
+
+Se han usado dos ficheros de cabecera externos para el manejo de tablas hash y listas enlazadas:
+\begin{itemize}
+\item \href{http://troydhanson.github.io/uthash/userguide.html}{uthash}
+\item
+\href{http://troydhanson.github.io/uthash/utlist.html}{utlist}
+\end{itemize}
+
+\subsection{Pruebas}
+Las pruebas correspondientes a estas librerias son aquellas implementadas en el directorio src cuyo nombre sigue la expresión regular
+\begin{center}
+G-1301-03-*$\_$test.c
+\end{center}
+\begin{itemize}
+\item \textbf{G-1301-03-P1-semaphores$\_$test} lanza varios hilos que leen concurrentemente un dato compartido e intentan escribir sobre otro. La escritura trata de agregar a una cadena de caracteres un número. El programa se ejecuta correctamente y la escritura se hace en orden y sin condiciones de carrera ni interbloqueos.
+\item \textbf{G-1301-03-P1-connection$\_$test} acepta conexiones en un puerto concreto y devuelve la misma cadena de texto que recibe.
+\item \textbf{G-1301-03-P1-daemonize$\_$test} Ejecuta un proceso en modo background y espera una señal para terminar. Se comprueba que el padre del proceso sea INIT (salvo en nuevas versiones del kernel de ubuntu).
+\item \textbf{G-1301-03-P1-irc$\_$split$\_$test} Comprueba el reconocimiento de patrones de comandos de IRC tal y como vienen especificados en el RFC indicado anteriormente. Comprueba funcionalidades añadidas (no especificadas en el RFC) como el hecho de que los argumentos se separen correctamente ignorando multiples espacios.
+\end{itemize}
+
+\section{Estructuras, comandos y pruebas del servidor}
+Para realizar el servidor se han utilizado estructuras que organizan los datos usando principalmente listas enlazadas y tablas hash.
+
+
+
+\end{document}
