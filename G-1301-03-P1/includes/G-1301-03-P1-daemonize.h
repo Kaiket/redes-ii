@@ -1,23 +1,31 @@
 #ifndef __DAEMONIZER_H
 #define __DAEMONIZER_H
 
-/*
- * Function: daemonizer
- * Parameters:
- *      ident: name of the log file that will be opened.
- * Description:
- *      It opens a log file named with the string pointed by "ident".
- *      After it, it starts a daemon following these steps:
- *              -Ignores SIGTTOU, SIGTTIN and SIGTSTP signals.
- *              -Creates a new session, becomes INIT child.
- *              -Loses the control of tty.
- *              -Closes all the files, ignores SIGCHLD and SIGPWR.
- *              -Change the working directory to / and sets the
- *               file mode creation mask providing all permissions.
- * Return value:
- *      OK on success.
- *      ERROR on failure, and it writes the description of the error in the log
- *      file and closes it.
+/**
+ * @file   G-1301-03-P1-daemonice.c¡h
+ * @author Enrique Cabrerizo Fernandez, Guillermo Ruiz Alvarez
+ * @date   Feb, 2013
+.*/
+
+/**
+ * @brief runs in background
+ * 
+ * @details Opens a connection with the system logger. The 
+ * string  pointed to by ident is prepended to every message.
+ * After that, runs the calling process in background mode.
+ * Signals SIGCHLD and SIGPWR will kill the process.
+ * 
+ * To test the function the program G-1301-03-P1-daemonize_test has been made.
+ * This program runs a process in background mode and pauses itself waiting for
+ * a signal to kill it.
+ * It shows the PID and PPID of the process. If the tty is closed after executing this
+ * program, the process won't stop until a signal (SIFPWR or SIGCHLD) is delivered. 
+ * Any of this facts will be registered in the log system.
+ * 
+ * @param ident name of the log identity
+ * 
+ * @return 0 on success. -1 on failure, and it writes the description 
+ * of the error in the log file closing the connection after it.
  */
 int daemonize(const char *ident);
 
