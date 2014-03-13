@@ -129,6 +129,12 @@ struct {
 En primer lugar, se tienen dos tablas indexadas para todos los usuarios y canales del servidor y una serie de variables necesarias para el uso de semáforos.
 \paragraph{}
 Los usuarios se identifican por el socket de la conexión, nick, nombre de usuario, y el resto de especificaciones que impone el RFC. Además, cada usuario dispone de banderas de modos y estados y una lista de los canales a los que pertenece.
+Los modos para canales que se han implementado son los siguientes:
+\begin{itemize}
+\item \textbf{+oO} Para hacer squit y ser operador en todos los canales.
+\item \textbf{+i} Modo invisible.
+\item \textbf{+a} Modo away.
+\end{itemize}
 \paragraph{}
 Los canales se identifican por un nombre, tema, contraseña, banderas de estados y el resto de especificaciones que impone el RFC. Además, cada canal dispone de una lista de usuarios y de operadores que pertenecen a dicho canal, así como una lista de invitados.
 Los modos para canales que se han implementado son los siguientes:
