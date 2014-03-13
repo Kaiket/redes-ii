@@ -24,6 +24,7 @@ enum {
     NAMES,
     JOIN,
     LIST,
+    TOPIC,
     WHO,
     PART,
     OPER,
@@ -32,7 +33,7 @@ enum {
     IRC_TOTAL_COMMANDS
 } command_enum;
 
-char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "MODE", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "WHO", "PART", "OPER", "QUIT" ,"SQUIT"};
+char *command_names[IRC_TOTAL_COMMANDS] = {"PING", "MODE", "NICK", "PASS", "USER", "PRIVMSG", "NAMES", "JOIN", "LIST", "TOPIC", "WHO", "PART", "OPER", "QUIT" ,"SQUIT"};
 
 /*
  * Initializes (to NULL) server hash tables;
@@ -307,6 +308,9 @@ int exec_cmd(int number, user* client, char *msg) {
         case LIST:
             ret=irc_list_cmd(client, msg);
             break;
+        case TOPIC:
+            ret=irc_topic_cmd(client, msg);
+            break;
         case WHO:
             ret=irc_who_cmd(client, msg);
             break;
@@ -416,7 +420,7 @@ int irc_ping_cmd(user* client, char *command){
     strcpy(response, "PONG ");
     strcat(response, SERVER_NAME);
     strcat(response, IRC_MSG_END);
-    if(send_msg(client->socket, response, strlen(response) ,IRC_MSG_LENGTH) <= 0){
+    if(send_msg(client->socket, response, strlen(response), IRC_MSG_LENGTH) <= 0){
         return ERROR;
     }
     return OK;
@@ -1590,4 +1594,96 @@ int irc_oper_cmd(user *client, char *command) {
 
     return OK;
 
+}
+
+
+/*
+ * TOPIC CMD
+ */
+int irc_topic_cmd(user *client, char *command) {
+
+    int prefix=0, n_strings, split_ret;
+    char *target_array[MAX_CMD_ARGS + 2];
+    char *details;
+    channel* ch_found;
+
+    split_ret = irc_split_cmd(command, (char **) &target_array, &prefix, &n_strings);
+
+    if(split_ret == ERROR || split_ret == ERROR_WRONG_SYNTAX){
+        return ERROR;
+    }
+    
+    if ((n_strings-prefix) == 1) {
+        irc_send_numeric_response(client, ERR_NEEDMOREPARAMS, ":Not enough parameters");
+        return OK;
+    }
+
+    if ((n_strings-prefix) == 2){
+
+        ch_found = channel_hasht_find(target_array[1]);
+        if(ch_found){
+            if(!ch_found->topic){
+                details = malloc(strlen(ch_found->name) + 1 + strlen(":No topic is set") + 1);
+                sprintf(details, "%s :No topic is set", ch_found->name);
+                irc_send_numeric_response(client, RPL_NOTOPIC, details);
+                free(details);
+
+            }
+            else{
+                details = malloc(strlen(ch_found->name) + 2 + strlen(ch_found->topic) + 1);
+                sprintf(details, "%s :%s", ch_found->name, ch_found->topic);
+                irc_send_numeric_response(client, RPL_TOPIC, details);
+                free(details);
+            }
+        }
+        else{
+            details = malloc(strlen(target_array[1]) + 1 + strlen(":No such channel") + 1);
+            sprintf(details, "%s :No such channel", target_array[1]);
+            irc_send_numeric_response(client, ERR_NOSUCHCHANNEL, details);
+            free(details);
+        }
+    }
+
+    else if ((n_strings-prefix) == 3){
+
+        ch_found = channel_hasht_find(target_array[1]);
+        if(ch_found){
+            if(user_mode_o(client->reg_modes) && user_mode_O(client->reg_modes)){
+
+                ch_found->topic = malloc(strlen(target_array[2])+1);
+                if(!ch_found->topic) return ERROR;
+                strcpy(ch_found->topic, target_array[2]);
+            }
+            else{
+                if(!find_chname_in_llist(target_array[1], &(client->channels_llist))){
+                    details = malloc(strlen(target_array[1]) + 1 + strlen(":You're not on that channel") + 1);
+                    sprintf(details, "%s :You're not on that channel", target_array[1]);
+                    irc_send_numeric_response(client, ERR_NOTONCHANNEL, details);
+                    free(details);
+
+                }
+                else{
+                    if(!find_nick_in_llist(client->nick, &(ch_found->operators_llist))){
+                        details = malloc(strlen(target_array[1]) + 1 + strlen(":You're not channel operator") + 1);
+                        sprintf(details, "%s :You're not channel operator", target_array[1]);
+                        irc_send_numeric_response(client, ERR_CHANOPRIVSNEEDED, details);
+                        free(details);
+                    }
+                    else{
+                        ch_found->topic = malloc(strlen(target_array[2])+1);
+                        if(!ch_found->topic) return ERROR;
+                        strcpy(ch_found->topic, target_array[2]);
+                    }
+                }
+            }
+        }
+        else{
+            details = malloc(strlen(target_array[1]) + 1 + strlen(":No such channel") + 1);
+            sprintf(details, "%s :No such channel", target_array[1]);
+            irc_send_numeric_response(client, ERR_NOSUCHCHANNEL, details);
+            free(details);
+        }
+    }
+
+    return OK;
 }
