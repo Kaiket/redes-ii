@@ -150,7 +150,7 @@ typedef struct {
 /*server data global variable*/
 struct {
     channel* channels_hasht;
-    /*¿semaforos?*/
+    int readers_num, readers, writer, mutex_access, mutex_rvariables;
     user* users_hasht;
     ban* banned_users_llist;
 } server_data;
