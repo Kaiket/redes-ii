@@ -1,3 +1,5 @@
+#ifndef __CONNECTION_H
+#define __CONNECTION_H
 /**
  * @file G-1301-03-P1-connection.h
  * @details Functions for connecting processes.
@@ -88,3 +90,5 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize);
   * file.
   */
 int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size_t enddata_len);
+
+#endif

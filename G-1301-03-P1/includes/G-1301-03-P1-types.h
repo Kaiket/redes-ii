@@ -1,6 +1,8 @@
-/*
- * Types predefined.
- */
+ /**
+ * @file G-1301-03-P1-types.h
+ * @details Types predefined.
+ * @author Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.*/
 
 /*Error types*/
 #define OK 0

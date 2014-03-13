@@ -9,6 +9,9 @@
 #include "G-1301-03-P1-types.h"
 #include "G-1301-03-P1-semaphores.h"
 
+/*Private functions*/
+ int semaphore_down(int sem_id);
+ int semaphore_up(int sem_id);
 
 /*
  * Function: semaphore_new

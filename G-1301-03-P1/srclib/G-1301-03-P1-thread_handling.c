@@ -31,7 +31,11 @@ long threads_per_page = 0;
 /*
  * Functions
  */
-
+/*
+ * Function: launch_thread
+ * Implementation comments:
+ *      none.
+ */
 int launch_thread(int client_sock, void* (*thread_routine) (void *arg)) {
     pthread_t thread;
 

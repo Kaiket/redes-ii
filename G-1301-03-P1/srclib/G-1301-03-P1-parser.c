@@ -2,7 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-
+/*
+ * Function: parser
+ * Implementation comments:
+ * 		none
+ */
 int parser(int total, char* strings[], char* msg) {
     int i;
     for (i=0; i<total; ++i) {
