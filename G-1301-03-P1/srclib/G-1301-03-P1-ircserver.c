@@ -446,9 +446,12 @@ int apply_modes_to_chan(user *us, channel* ch, char* modestr, char** modeargs) {
         switch(modestr[i]) {
             case 'o':
                 if (arg_count>=3) continue;
-                else if (modeargs[arg_count]==NULL) irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
+                else if (modeargs[arg_count]==NULL) {irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG); arg_count++; continue;}
                 else if (!is_valid_nick(modeargs[arg_count])) {arg_count++; continue;}
-                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH*2 + 2 + strlen("MODE") + 1 + strlen(ch->name) + 5 + strlen(IRC_MSG_END) + 1))) continue;
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH*2 + 2 + strlen("MODE") + 1 + strlen(ch->name) + 5 + strlen(IRC_MSG_END) + 1))) {
+                    arg_count++;
+                    continue;
+                }
                 if (oper=='+'){
                     if (find_nick_in_llist(modeargs[arg_count], &(ch->operators_llist))) {
                         arg_count++; 
@@ -521,20 +524,26 @@ int apply_modes_to_chan(user *us, channel* ch, char* modestr, char** modeargs) {
                 break;
                 
             case 'k':
-                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(" channel") + strlen(IRC_MSG_END) + 1))) 
+                    continue;
+                wanted_modes=(wanted_modes & ~CH_MODE_k);
                 if (oper=='+'){
-                    if (arg_count>=3) {free(msg); continue;}
-                    else if (modeargs[arg_count]==NULL) irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
+                    if (arg_count>=3) {free(msg); continue;}                    
+                    else if (modeargs[arg_count]==NULL) {
+                        irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG); 
+                        free(msg); 
+                        arg_count++; 
+                        continue;
+                    }
                     else if (!is_valid_pass(modeargs[arg_count])) {free(msg); arg_count++; continue;}
                     if (ch->pass) {
                         irc_send_numeric_response(us, ERR_KEYSET, ":Key already set");
                         free(msg);
                         arg_count++;
-                        wanted_modes=(wanted_modes & ~CH_MODE_k);
                         continue;
                     }
                     ch->pass=strdup(modeargs[arg_count]);
-                    sprintf(msg, ":%s MODE %s +k%s", us->nick, ch->name,  IRC_MSG_END);
+                    sprintf(msg, ":%s MODE %s +k channel%s", us->nick, ch->name,  IRC_MSG_END);
                     arg_count++;
                 }
                 else {
@@ -542,16 +551,24 @@ int apply_modes_to_chan(user *us, channel* ch, char* modestr, char** modeargs) {
                     free(ch->pass);
                     ch->pass=NULL;
                     sprintf(msg, ":%s MODE %s -k%s", us->nick, ch->name,  IRC_MSG_END);
+                    
                 }
+                wanted_modes=(wanted_modes | CH_MODE_k);
                 send_msg_to_channel(ch, msg);
                 free(msg);
                 break;
                 
             case 'l':
                 if (!(msg=(char*)malloc(1+IRC_MAX_NICK_LENGTH + 1 + strlen("MODE") + 1 + strlen(ch->name) + 1 + strlen(IRC_MSG_END) + 1))) continue;
+                wanted_modes=(wanted_modes & ~CH_MODE_l);
                 if (oper=='+'){
-                    if (arg_count>=3) {free(msg); continue;}
-                    else if (modeargs[arg_count]==NULL) irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG);
+                    if (arg_count>=3) {free(msg); continue;}                    
+                    else if (modeargs[arg_count]==NULL) {
+                        irc_send_numeric_response(us, ERR_NEEDMOREPARAMS, NEEDMOREPARAMS_MSG); 
+                        free(msg); 
+                        arg_count++; 
+                        continue;
+                    }
                     if (atoi(modeargs[arg_count])<=0) {
                         wanted_modes=(wanted_modes & ~CH_MODE_l);
                         free(msg);
@@ -562,9 +579,11 @@ int apply_modes_to_chan(user *us, channel* ch, char* modestr, char** modeargs) {
                     arg_count++;
                 }
                 else {
+                    wanted_modes=(wanted_modes & ~CH_MODE_l);
                     if (!chan_mode_l(ch->modes)) {free(msg); continue;}
                     sprintf(msg, ":%s MODE %s -l%s", us->nick, ch->name,  IRC_MSG_END);
                 }
+                wanted_modes=(wanted_modes | CH_MODE_l);
                 send_msg_to_channel(ch, msg);
                 free(msg);
                 break;
@@ -651,6 +670,12 @@ int irc_mode_cmd (user* client, char* command) {
         /***********************************************************************************************down write*******/
         target_chan=channel_hasht_find(target_array[prefix+1]);
         if (!target_chan) { /*no such channel*/
+            if (!(msg=(char*)malloc(strlen(NOSUCHCHANNEL_MSG) + strlen(target_chan->name) + 1))) {
+                return ERROR;
+            }
+            sprintf(msg, NOSUCHCHANNEL_MSG, target_chan->name);
+            irc_send_numeric_response(client, ERR_NOSUCHCHANNEL,msg);
+            free(msg);
             /***********************************************************************************************up write*******/
             return OK;
         }
@@ -662,17 +687,19 @@ int irc_mode_cmd (user* client, char* command) {
             passlen=((target_chan->pass==NULL)?0:strlen(target_chan->pass));
             if (!(msg=malloc(strlen(target_chan->name)+1+strlen(ch_mode_str)+1+passlen+22))) {
                 /***********************************************************************************************up write*******/
+                free(ch_mode_str);
                 return ERROR;
             }
-            sprintf(msg, "%s %s %s %ud", target_chan->name, ch_mode_str, ((target_chan->pass==NULL)?"":target_chan->pass), target_chan->users_max );
+            sprintf(msg, "%s %s %s %u", target_chan->name, ch_mode_str, ((target_chan->pass==NULL)?"":target_chan->pass), target_chan->users_max );
             irc_send_numeric_response(client, RPL_CHANNELMODEIS, msg);
             free(ch_mode_str);
             /***********************************************************************************************up write*******/
             return OK;
         }
-        else {
+        else {    
             if (!find_nick_in_llist(client->nick, &(target_chan->operators_llist))) {
                 irc_send_numeric_response(client, ERR_CHANOPRIVSNEEDED, ":You are not channel operator");
+                return OK;
             }
             apply_modes_to_chan(client, target_chan, target_array[prefix+2], &(target_array[prefix+3]));
         }
@@ -723,7 +750,7 @@ int irc_nick_cmd (user* client, char* command) {
     
     /***************************************************************************************************************down server write semaphores*/
     if (user_hasht_find(new_nick)!=NULL) {
-        irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ":Nickname already in use");
+        irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ": Nickname already in use");
     }
     else if (client->already_in_server==0 || !user_registered(client->reg_modes)) {/*if not already recongnized by the server, we can just change the nick cause he is not in any channel*/
         if (client->already_in_server==1) user_hasht_remove(client);
@@ -773,10 +800,10 @@ int user_part_chan(user* client, channel* chan, char* leave_msg) {
     }
     
     if (!chan) { /*no such channel*/
-        if (!(error_msg=(char*)malloc(strlen(NOSUCHCHANNEL_MSG) + strlen(chan->name) + 1))) {
+        if (!(error_msg=(char*)malloc(strlen(NOSUCHCHANNEL_MSG)  + 1))) {
             return ERROR;
         }
-        sprintf(error_msg, NOSUCHCHANNEL_MSG, chan->name);
+        sprintf(error_msg, NOSUCHCHANNEL_MSG, "");
         irc_send_numeric_response(client, ERR_NOSUCHCHANNEL,error_msg);
         free(error_msg);
     }
@@ -866,7 +893,6 @@ int irc_quit_cmd (user* client, char* command) {
     if(split_ret_value == ERROR || split_ret_value == ERROR_WRONG_SYNTAX){
         return ERROR;
     }
-    syslog(LOG_NOTICE, "debug 1");
     /*compose a message to notify departure*/
     if (n_strings-prefix>1) {
         if ((msg=(char*)malloc(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("QUIT") + 1 + strlen(target_array[prefix+1]) + strlen(IRC_MSG_END) + 1))) { /*compose a message to notify departure*/
@@ -1107,7 +1133,6 @@ int irc_names_cmd (user* client, char* command) {
         target=NULL;
         if (is_valid_chname(token)) { /*token is a channel_name*/
             if ((target_channel=channel_hasht_find(token))!=NULL) {
-                syslog(LOG_NOTICE, "debug 1");
                 send_names(client, target_channel);
             }
         }
@@ -1124,7 +1149,11 @@ int user_join_chan(user *client,channel *chan,char *pass) {
     if (find_chname_in_llist(chan->name, &(client->channels_llist))) return OK;  /*if already in the channel return*/
     
     if (chan_mode_k(chan->modes)) {
-        if (pass && chan->pass) {
+        if (chan->pass) {
+            if (!pass) {
+                irc_send_numeric_response(client ,ERR_PASSWDMISMATCH ,":Password incorrect");
+                return OK;
+            }
             if (strcmp(pass, chan->pass)) {
                 irc_send_numeric_response(client ,ERR_PASSWDMISMATCH ,":Password incorrect");
                 return OK;
@@ -1149,11 +1178,13 @@ int user_join_chan(user *client,channel *chan,char *pass) {
     if (add_chname_to_llist(chan->name, &(client->channels_llist))==ERROR) return ERROR;
     if (user_mode_o(client->reg_modes) || user_mode_O(client->reg_modes)) {
         if (add_nick_to_llist(client->nick, &(chan->operators_llist))==ERROR) {
+            syslog(LOG_NOTICE, "debug :Entra como operador %s", client->nick);
             remove_chname_from_llist(chan->name, &(client->channels_llist));
             return ERROR;
         }
     }
     else {
+        syslog(LOG_NOTICE, "debug: Entra como user %s", client->nick);
         if (add_nick_to_llist(client->nick, &(chan->users_llist))==ERROR) {
             remove_chname_from_llist(chan->name, &(client->channels_llist));
             return ERROR;

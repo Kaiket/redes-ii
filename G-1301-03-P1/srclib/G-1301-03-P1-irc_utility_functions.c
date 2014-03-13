@@ -269,10 +269,6 @@ char* chan_mode_string(unsigned int modes) {
     int i = 1;
     if (!(str = (char*) malloc(1 + CH_MODE_NUMBER + 1))) return NULL;
     str[0] = '+';
-    if (chan_mode_o(modes)) {
-        str[i] = 'o';
-        ++i;
-    }
     if (chan_mode_i(modes)) {
         str[i] = 'i';
         ++i;
@@ -298,7 +294,7 @@ char* chan_mode_string(unsigned int modes) {
 }
 
 unsigned int chan_mode_from_str(char* str, char* unk, char* oper) {
-    char mode = 0;
+    unsigned int mode = 0;
     int i = 0;
     if (str[0] == '-') {
         *oper = '-';
@@ -308,8 +304,7 @@ unsigned int chan_mode_from_str(char* str, char* unk, char* oper) {
         *oper = '+';
     }
     while (str[i] != '\0') {
-        if (str[i] == 'o') mode = (mode | CH_MODE_o);
-        else if (str[i] == 'i') mode = (mode | CH_MODE_i);
+        if (str[i] == 'i') mode = (mode | CH_MODE_i);
         else if (str[i] == 'n') mode = (mode | CH_MODE_n);
         else if (str[i] == 't') mode = (mode | CH_MODE_t);
         else if (str[i] == 'k') mode = (mode | CH_MODE_k);
@@ -385,7 +380,6 @@ int remove_nick_from_llist(char nick[IRC_MAX_NICK_LENGTH + 1], active_nicks** ll
 
 active_nicks* find_nick_in_llist(char nick [IRC_MAX_NICK_LENGTH + 1], active_nicks** llist) {
     active_nicks *elem = NULL;
-
     LL_FOREACH(*llist, elem) {
         if (!strncmp(nick, elem->nick, strlen(nick))) {
             return elem;
