@@ -5,6 +5,7 @@
 #include "G-1301-03-P1-irc_errors.h"
 #include "G-1301-03-P1-irc_utility_functions.h"
 #include "G-1301-03-P1-parser.h"
+#include "G-1301-03-P1-semaphores.h"
 #include "../includes/uthash.h"
 #include "../includes/utlist.h"
 #include <stdio.h>
@@ -43,7 +44,26 @@ void irc_server_data_init() {
     server_data.banned_users_llist=NULL;
     server_data.channels_hasht=NULL;
     server_data.users_hasht=NULL;
-    /*inicializar semaforos*/
+    server_data.readers_num = 0;
+    if ((server_data.readers = semaphore_new()) == ERROR){
+        syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+    }
+
+    if ((server_data.writer = semaphore_new()) == ERROR){
+        syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+    }
+
+    if ((server_data.mutex_access = semaphore_new()) == ERROR){
+        syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+    }
+
+    if ((server_data.mutex_rvariables = semaphore_new()) == ERROR){
+        syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+    }
 }
 
 /*
@@ -111,7 +131,7 @@ void *irc_thread_routine(void *arg) {
     }
 
     /*if socket was closed, maybe some data from user is still in server_data, we remove it*/
-    /**********************************************************************************write sem down*/
+    semaphore_bw(server_data.writer, server_data.readers);
     if (my_user->already_in_server) { /*known by the server*/
         if (user_hasht_find(my_user->nick)){
             user_hasht_remove(my_user);
@@ -130,7 +150,7 @@ void *irc_thread_routine(void *arg) {
         }
     }
     free_user(my_user);
-    /**********************************************************************************write sem up*/
+    semaphore_aw(server_data.writer, server_data.readers);
     
     
     pthread_exit(NULL);
@@ -635,15 +655,15 @@ int irc_mode_cmd (user* client, char* command) {
             irc_send_numeric_response(client, ERR_USERSDONTMATCH, USERSDONTMATCH_MSG);
         }
         else if ((n_strings-prefix)==2) { /*no more parameters RPL_UMODEIS*/
-            /***********************************************************************************************down server read sem*/
+            semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
             if (!(user_mode_str=user_mode_string(client->reg_modes))) return ERROR;
-            /***********************************************************************************************up server read sem*/
+            semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
             irc_send_numeric_response(client, RPL_UMODEIS, user_mode_str);
             free(user_mode_str);
             return OK;
         }
         else {
-            /***********************************************************************************************down server write sem*/
+            semaphore_bw(server_data.writer, server_data.readers);
             user_new_mode=user_mode_from_str(target_array[prefix+2], &unknown_mode, &operation);
             if (operation=='+') {
                 user_new_mode=(user_new_mode & ~(US_MODE_a | US_MODE_o | US_MODE_O)); /*cannot grant a o O modes this way*/
@@ -653,7 +673,8 @@ int irc_mode_cmd (user* client, char* command) {
                 irc_send_numeric_response(client, ERR_UMODEUNKNOWNFLAG, UMODEUNKNOWNFLAG_MSG);
             }
             client->reg_modes=(USER_REGISTERED|user_new_mode|client->reg_modes);
-            /***********************************************************************************************up server write sem*/
+            semaphore_aw(server_data.writer, server_data.readers);
+
             if (!(user_mode_str=user_mode_string(user_new_mode))) return ERROR;
             if (!(msg=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH*2 + 1 + strlen("MODE") + 3 + strlen(user_mode_str) + strlen(IRC_MSG_END) + 1)))) {
                 free(user_mode_str);
@@ -667,7 +688,7 @@ int irc_mode_cmd (user* client, char* command) {
         
     }
     else if (is_valid_chname(target_array[prefix+1])) { /*target is a channel*/
-        /***********************************************************************************************down write*******/
+        semaphore_bw(server_data.writer, server_data.readers);
         target_chan=channel_hasht_find(target_array[prefix+1]);
         if (!target_chan) { /*no such channel*/
             if (!(msg=(char*)malloc(strlen(NOSUCHCHANNEL_MSG) + strlen(target_chan->name) + 1))) {
@@ -676,24 +697,24 @@ int irc_mode_cmd (user* client, char* command) {
             sprintf(msg, NOSUCHCHANNEL_MSG, target_chan->name);
             irc_send_numeric_response(client, ERR_NOSUCHCHANNEL,msg);
             free(msg);
-            /***********************************************************************************************up write*******/
+            semaphore_aw(server_data.writer, server_data.readers);
             return OK;
         }
         if ((n_strings-prefix)==2) { /*no more arguments*/
             if (!(ch_mode_str=chan_mode_string(target_chan->modes))) {
-                /***********************************************************************************************up write*******/
+                semaphore_aw(server_data.writer, server_data.readers);
                 return ERROR;
             }
             passlen=((target_chan->pass==NULL)?0:strlen(target_chan->pass));
             if (!(msg=malloc(strlen(target_chan->name)+1+strlen(ch_mode_str)+1+passlen+22))) {
-                /***********************************************************************************************up write*******/
+                semaphore_aw(server_data.writer, server_data.readers);
                 free(ch_mode_str);
                 return ERROR;
             }
             sprintf(msg, "%s %s %s %u", target_chan->name, ch_mode_str, ((target_chan->pass==NULL)?"":target_chan->pass), target_chan->users_max );
             irc_send_numeric_response(client, RPL_CHANNELMODEIS, msg);
             free(ch_mode_str);
-            /***********************************************************************************************up write*******/
+            semaphore_aw(server_data.writer, server_data.readers);
             return OK;
         }
         else {    
@@ -703,7 +724,7 @@ int irc_mode_cmd (user* client, char* command) {
             }
             apply_modes_to_chan(client, target_chan, target_array[prefix+2], &(target_array[prefix+3]));
         }
-        /***********************************************************************************************up write*******/
+        semaphore_aw(server_data.writer, server_data.readers);
     }
     return OK;
 }
@@ -748,7 +769,7 @@ int irc_nick_cmd (user* client, char* command) {
         irc_send_numeric_response(client, ERR_RESTRICTED, ":You don't have permission to do that");
     }
     
-    /***************************************************************************************************************down server write semaphores*/
+    semaphore_bw(server_data.writer, server_data.readers);
     if (user_hasht_find(new_nick)!=NULL) {
         irc_send_numeric_response(client, ERR_NICKNAMEINUSE, ": Nickname already in use");
     }
@@ -784,7 +805,7 @@ int irc_nick_cmd (user* client, char* command) {
         send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
     }    
     
-    /***************************************************************************************************************up server write semaphores*/
+    semaphore_aw(server_data.writer, server_data.readers);
     
     return OK;
 }
@@ -867,7 +888,7 @@ int irc_part_cmd (user* client, char* command) {
     targetnm=target_array[prefix+1];
     if (n_strings-prefix>2) msg=target_array[prefix+2];
     
-    /************************************************************************************down write semaphores*/
+    semaphore_bw(server_data.writer, server_data.readers);
     while ( (chnametoken=strtok_r(targetnm, ",", &chnametmp)) ) {
         targetnm=NULL;
         if (is_valid_chname(chnametoken)) {
@@ -875,7 +896,7 @@ int irc_part_cmd (user* client, char* command) {
             if (target_channel) user_part_chan(client, target_channel, msg);
         }        
     }
-    /************************************************************************************up write semaphores*/
+    semaphore_aw(server_data.writer, server_data.readers);
     return OK;
 }
 
@@ -905,7 +926,7 @@ int irc_quit_cmd (user* client, char* command) {
         }
     }
     syslog(LOG_NOTICE, "debug 2");
-    /**********************************************************************************write sem down*/
+    semaphore_bw(server_data.writer, server_data.readers);
     if (client->already_in_server) { /*known by the server*/
         user_hasht_remove(client);
         /*remove client from every channel he's in and notify to the rest of the users*/
@@ -928,7 +949,7 @@ int irc_quit_cmd (user* client, char* command) {
     }
     close_connection(client->socket);
     free_user(client);
-    /**********************************************************************************write sem up*/
+    semaphore_aw(server_data.writer, server_data.readers);
     pthread_exit(NULL);
 }
 
@@ -1024,7 +1045,7 @@ int irc_privmsg_cmd (user* client, char* command) {
     target=target_array[prefix+1];
     msg=target_array[prefix+2];
     
-    /************************************************************************************down read semaphores*/
+    semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
     while ( (token=strtok_r(target, ",", &tok_tmp)) ) {
         target=NULL;
         if (is_valid_nick(token)) { /*token is a user_name*/
@@ -1051,8 +1072,8 @@ int irc_privmsg_cmd (user* client, char* command) {
             }
         }
     }
+    semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
     return OK;
-    /************************************************************************************up read semaphores*/
 }
 
 
@@ -1128,7 +1149,7 @@ int irc_names_cmd (user* client, char* command) {
     }
     target=target_array[prefix+1];
     
-    /************************************************************************************down read semaphores*/
+    semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
     while ( (token=strtok_r(target, ",", &tok_tmp)) ) {
         target=NULL;
         if (is_valid_chname(token)) { /*token is a channel_name*/
@@ -1137,7 +1158,7 @@ int irc_names_cmd (user* client, char* command) {
             }
         }
     }
-    /************************************************************************************up read semaphores*/
+    semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
     return OK;
 }
 
@@ -1294,7 +1315,7 @@ int irc_join_cmd (user* client, char* command) {
     if (n_strings-prefix>2) {
         targetpass=target_array[prefix+2];
     }
-    /************************************************************************************down write semaphores*/
+    semaphore_bw(server_data.writer, server_data.readers);
     while ( (chnametoken=strtok_r(targetnm, ",", &chnametmp)) ) {
         targetnm=NULL;
         if (is_valid_chname(chnametoken)) {
@@ -1323,7 +1344,7 @@ int irc_join_cmd (user* client, char* command) {
             error_nochan=NULL;
         }
     }
-    /************************************************************************************up write semaphores*/
+    semaphore_aw(server_data.writer, server_data.readers);
     return OK;
 }
 
@@ -1347,13 +1368,13 @@ int irc_pass_cmd (user* client, char* command) {
         return OK;
     }
     
-    /***********************************************************************************************down server read sem*/
+    semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
     
     if (user_registered(client->reg_modes)) {
         irc_send_numeric_response(client, ERR_ALREADYREGISTRED, ":You can't register twice!");
     }
     
-    /***********************************************************************************************up server read sem*/
+    semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
     
     return OK;
 }
@@ -1379,7 +1400,7 @@ int irc_user_cmd (user* client, char* command) {
     mode=target_array[prefix+2];
     realname=target_array[prefix+4];
    
-    /***********************************************************************************************down server write sem*/
+    semaphore_bw(server_data.writer, server_data.readers);
     if (user_registered(client->reg_modes)) {
         irc_send_numeric_response(client, ERR_ALREADYREGISTRED, ":You can't register twice!");
     }
@@ -1387,14 +1408,14 @@ int irc_user_cmd (user* client, char* command) {
         requested_modes=atoi(mode);
         requested_modes=(requested_modes & (US_MODE_DEFAULT)); 
         if (!(client->user_name=strdup(user))) {
-            /**************************************************************************up write sem*/
+            semaphore_aw(server_data.writer, server_data.readers);
             return ERROR;
         }
         if (realname[0]==':') realname++;
         if (!(client->real_name=strdup(realname))) {
             free(client->user_name);
             client->user_name=NULL;
-            /***************************************************************************up write sem*/
+            semaphore_aw(server_data.writer, server_data.readers);
             return ERROR;
         }
         client->reg_modes=requested_modes;
@@ -1407,7 +1428,7 @@ int irc_user_cmd (user* client, char* command) {
             irc_send_numeric_response(client, RPL_MYINFO, MYINFO_MSG);
         }
     }
-    /***********************************************************************************************up server write sem*/
+    semaphore_aw(server_data.writer, server_data.readers);
     return OK;
 }
 
@@ -1438,7 +1459,7 @@ int irc_who_cmd(user *client, char *command){
     param = strtok_r(target_array[prefix+1], ",", &saveptr);
 
     while(param){
-        /**SEMAPHORE_HERE**/
+        semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
         ch_found = channel_hasht_find(param);
 
         if(ch_found){
@@ -1447,7 +1468,10 @@ int irc_who_cmd(user *client, char *command){
                 if (usr_found) {
                     if(!user_mode_i(usr_found->reg_modes)){
                         details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 7 + strlen(usr_found->real_name)+1);
-                        if(!details) return ERROR;
+                        if(!details){
+                            semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
+                            return ERROR;  
+                        } 
                         sprintf(details, "%s ~%s - - %s H@ :0 %s", param, 
                                                                    usr_found->user_name,  
                                                                    usr_found->nick,
@@ -1463,7 +1487,10 @@ int irc_who_cmd(user *client, char *command){
                 if (usr_found) {
                     if(!user_mode_i(usr_found->reg_modes)){
                         details = malloc(strlen(param) + 2 + strlen(usr_found->user_name) + 5 + strlen(usr_found->nick) + 6 + strlen(usr_found->real_name)+1);
-                        if(!details) return ERROR;
+                        if(!details){
+                            semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
+                            return ERROR;  
+                        } 
                         sprintf(details, "%s ~%s - - %s H :0 %s", param, 
                                                                    usr_found->user_name, 
                                                                    usr_found->nick,
@@ -1475,7 +1502,8 @@ int irc_who_cmd(user *client, char *command){
             }
         }
 
-        /**SEMAPHORE_HERE**/
+        semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
+
         details = malloc(strlen(param) + 1 + strlen(":End of /WHO list.") + 1);
         if(!details) return ERROR;
         sprintf(details, "%s :End of /WHO list.", param);
@@ -1507,18 +1535,24 @@ int irc_list_cmd(user *client, char *command){
     
     if ((n_strings-prefix) == 1) {
         irc_send_numeric_response(client, RPL_LISTSTART, "Channel :Users Name");
-        /*SEMAPHORE HERE*/
+        semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
         
         HASH_ITER(hh, server_data.channels_hasht, ch_found, tmp){
 
             if(ch_found->topic){
                 details = malloc(strlen(ch_found->name) + 23 + strlen(ch_found->topic) + 1);
-                if(!details) return ERROR;
+                if(!details){
+                    semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
+                    return ERROR;  
+                } 
                 sprintf(details, "%s %u :%s", ch_found->name, ch_found->users_number, ch_found->topic);
             }
             else{
                 details = malloc(strlen(ch_found->name) + 24);
-                if(!details) return ERROR;
+                if(!details){
+                    semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
+                    return ERROR;  
+                } 
                 sprintf(details, "%s %u :", ch_found->name, ch_found->users_number);
             }
             
@@ -1526,7 +1560,9 @@ int irc_list_cmd(user *client, char *command){
             free(details);
             
         }
-        /*SEMAPHORE HERE*/
+
+        semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
+
         irc_send_numeric_response(client, RPL_LISTEND, ":End of /LIST");
     }
 
@@ -1537,7 +1573,7 @@ int irc_list_cmd(user *client, char *command){
 
         while(param){
 
-            /**SEMAPHORE_HERE**/
+            semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
             ch_found = channel_hasht_find(param);
             if(ch_found){
                 if(ch_found->topic){
@@ -1554,7 +1590,7 @@ int irc_list_cmd(user *client, char *command){
                 irc_send_numeric_response(client, RPL_LIST, details);
                 free(details);
             }
-            /*SEMAPHORE HERE*/
+            semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
 
             param = strtok_r(NULL, ",", &saveptr);
             
@@ -1592,7 +1628,6 @@ int irc_oper_cmd(user *client, char *command) {
         return OK;
     }
 
-    /*SEMAPHORE HERE*/
     if(user_mode_o(client->reg_modes) && user_mode_O(client->reg_modes)){
         return OK;
     }
@@ -1601,21 +1636,23 @@ int irc_oper_cmd(user *client, char *command) {
         irc_send_numeric_response(client, ERR_PASSWDMISMATCH, ":Password incorrect");
         return OK;
     }
-    /*SEMAPHORE HERE*/
 
-    /*WRITE SEMAPHORE HERE*/
+    semaphore_bw(server_data.writer, server_data.readers);
     client->reg_modes = client->reg_modes | US_MODE_o | US_MODE_O;
 
     LL_FOREACH(client->channels_llist, chlst){
         ch_found = channel_hasht_find(chlst->ch_name);
         if(ch_found){
             if(remove_nick_from_llist(client->nick, &(ch_found->users_llist)) != ERROR){
-                if(add_nick_to_llist(client->nick, &(ch_found->operators_llist)) == ERROR) return ERROR;
+                if(add_nick_to_llist(client->nick, &(ch_found->operators_llist)) == ERROR){
+                    semaphore_aw(server_data.writer, server_data.readers);
+                    return ERROR;
+                }
             }
         }
     }
 
-    /*WRITE SEMAPHORE HERE*/
+    semaphore_aw(server_data.writer, server_data.readers);
 
     details = malloc(strlen("MODE +oO") + 1 + strlen(client->nick) + 1 + strlen(":You are now an IRC operator") + 1);
     if(!details) return ERROR;
@@ -1650,7 +1687,7 @@ int irc_topic_cmd(user *client, char *command) {
     }
 
     if ((n_strings-prefix) == 2){
-
+        semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
         ch_found = channel_hasht_find(target_array[1]);
         if(ch_found){
             if(!ch_found->topic){
@@ -1673,17 +1710,26 @@ int irc_topic_cmd(user *client, char *command) {
             irc_send_numeric_response(client, ERR_NOSUCHCHANNEL, details);
             free(details);
         }
+        semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
     }
 
     else if ((n_strings-prefix) == 3){
-
+        semaphore_bw(server_data.writer, server_data.readers);
         ch_found = channel_hasht_find(target_array[1]);
         if(ch_found){
             if(user_mode_o(client->reg_modes) && user_mode_O(client->reg_modes)){
-
-                ch_found->topic = malloc(strlen(target_array[2])+1);
-                if(!ch_found->topic) return ERROR;
-                strcpy(ch_found->topic, target_array[2]);
+                if(ch_found->topic && strlen(target_array[2]) <= 1){
+                    free(ch_found->topic);
+                    ch_found->topic = NULL;
+                }
+                else if(strlen(target_array[2]) > 1){
+                    ch_found->topic = malloc(strlen(target_array[2])+1);
+                    if(!ch_found->topic){
+                        semaphore_aw(server_data.writer, server_data.readers);
+                        return ERROR;
+                    }
+                    strcpy(ch_found->topic, target_array[2]);
+                }
             }
             else{
                 if(!find_chname_in_llist(target_array[1], &(client->channels_llist))){
@@ -1701,9 +1747,19 @@ int irc_topic_cmd(user *client, char *command) {
                         free(details);
                     }
                     else{
-                        ch_found->topic = malloc(strlen(target_array[2])+1);
-                        if(!ch_found->topic) return ERROR;
-                        strcpy(ch_found->topic, target_array[2]);
+                        
+                        if(ch_found->topic && strlen(target_array[2]) <= 1){
+                            free(ch_found->topic);
+                            ch_found->topic = NULL;
+                        }
+                        else if(strlen(target_array[2]) > 1){
+                            ch_found->topic = malloc(strlen(target_array[2])+1);
+                            if(!ch_found->topic){
+                                semaphore_aw(server_data.writer, server_data.readers);
+                                return ERROR;
+                            }
+                            strcpy(ch_found->topic, target_array[2]);
+                        }
                     }
                 }
             }
@@ -1715,6 +1771,8 @@ int irc_topic_cmd(user *client, char *command) {
             free(details);
         }
     }
+
+    semaphore_aw(server_data.writer, server_data.readers);
 
     return OK;
 }
