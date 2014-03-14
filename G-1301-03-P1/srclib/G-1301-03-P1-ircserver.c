@@ -6,8 +6,8 @@
 #include "G-1301-03-P1-irc_utility_functions.h"
 #include "G-1301-03-P1-parser.h"
 #include "G-1301-03-P1-semaphores.h"
-#include "../includes/uthash.h"
-#include "../includes/utlist.h"
+#include "uthash.h"
+#include "utlist.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>

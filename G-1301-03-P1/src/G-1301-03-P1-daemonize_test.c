@@ -3,8 +3,8 @@
 #include <syslog.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "../includes/G-1301-03-P1-types.h"
-#include "../includes/G-1301-03-P1-daemonize.h"
+#include "G-1301-03-P1-types.h"
+#include "G-1301-03-P1-daemonize.h"
 
 
 int main(int argc, char **argv){

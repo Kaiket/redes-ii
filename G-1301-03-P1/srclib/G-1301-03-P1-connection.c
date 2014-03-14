@@ -13,8 +13,8 @@
 #include <inttypes.h>
 #include <linux/tcp.h>
 #include <unistd.h>
-#include "../includes/G-1301-03-P1-connection.h"
-#include "../includes/G-1301-03-P1-types.h"
+#include "G-1301-03-P1-connection.h"
+#include "G-1301-03-P1-types.h"
 
  /*LOW LEVEL FUNCTIONS*/
 int open_TCP_socket();

@@ -12,8 +12,8 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
-#include "../includes/G-1301-03-P1-types.h"
-#include "../includes/G-1301-03-P1-thread_handling.h"
+#include "G-1301-03-P1-types.h"
+#include "G-1301-03-P1-thread_handling.h"
 
 /*
  * Global variables
