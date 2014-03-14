@@ -747,6 +747,7 @@ int irc_mode_cmd (user* client, char* command) {
             sprintf(msg, "%s %s %s %u", target_chan->name, ch_mode_str, ((target_chan->pass==NULL)?"":target_chan->pass), target_chan->users_max );
             irc_send_numeric_response(client, RPL_CHANNELMODEIS, msg);
             free(ch_mode_str);
+            free(msg);
             semaphore_aw(server_data.writer, server_data.readers);
             return OK;
         }
@@ -829,9 +830,6 @@ int irc_nick_cmd (user* client, char* command) {
     }
     else { /*in server and registered, seek every channel he is in and change the nick in the list of users or operators*/
         sprintf(success_msg, ":%s NICK %s%s", client->nick, new_nick, IRC_MSG_END);
-        user_hasht_remove(client);
-        strncpy(client->nick, new_nick, strlen(new_nick)+1);
-        user_hasht_add(client);
         LL_FOREACH(client->channels_llist , elt) {
             chan=channel_hasht_find(elt->ch_name);
             if (remove_nick_from_llist(client->nick, &(chan->users_llist))==OK) {
@@ -842,6 +840,9 @@ int irc_nick_cmd (user* client, char* command) {
             }
             send_msg_to_channel_except(client, chan, success_msg);
         }
+        user_hasht_remove(client);
+        strncpy(client->nick, new_nick, strlen(new_nick)+1);
+        user_hasht_add(client);
         send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
     }    
     
@@ -877,15 +878,15 @@ int user_part_chan(user* client, channel* chan, char* leave_msg) {
         free(error_msg);
     }
     else { /*on channel, leave, notify to members and if channel is empty delete it*/
+        remove_chname_from_llist(chan->name, &(client->channels_llist));
+        remove_nick_from_llist(client->nick, &(chan->users_llist));
+        remove_nick_from_llist(client->nick, &(chan->operators_llist));
+        chan->users_number--;
         if (!(msg=(char*)malloc(1+strlen(client->nick)+1+strlen("PART")+1+strlen(chan->name)+1+strlen(user_msg)+strlen(IRC_MSG_END)+1))) {
             return ERROR;
         }
         sprintf(msg, ":%s PART %s %s%s", client->nick, chan->name, user_msg, IRC_MSG_END);
         send_msg_to_channel(chan, msg);
-        remove_chname_from_llist(chan->name, &(client->channels_llist));
-        remove_nick_from_llist(client->nick, &(chan->users_llist));
-        remove_nick_from_llist(client->nick, &(chan->operators_llist));
-        chan->users_number--;
         if (is_empty_channel(chan)) {
             channel_hasht_remove(chan);
             free_channel(chan);
@@ -965,7 +966,6 @@ int irc_quit_cmd (user* client, char* command) {
             sprintf(msg, ":%s QUIT :%s", client->nick, IRC_MSG_END);
         }
     }
-    syslog(LOG_NOTICE, "debug 2");
     semaphore_bw(server_data.writer, server_data.readers);
     if (client->already_in_server) { /*known by the server*/
         user_hasht_remove(client);
@@ -989,6 +989,7 @@ int irc_quit_cmd (user* client, char* command) {
     }
     close_connection(client->socket);
     free_user(client);
+    free(msg);
     semaphore_aw(server_data.writer, server_data.readers);
     pthread_exit(NULL);
 }
@@ -1037,7 +1038,6 @@ int send_privmsg_to_chan (user *origin, channel *target, char* msg) {
     if (chan_mode_n(target->modes)) { //chan mode n can't receive message from not members
         if ((find_nick_in_llist(origin->nick, &(target->users_llist)) == NULL) && (find_nick_in_llist(origin->nick, &(target->operators_llist)) == NULL)) {
             if (!(error_cantsend=(char*)malloc((strlen(CANNOTSENDTOCHAN_MSG)+strlen(target->name)+1)*sizeof(char)))){
-                syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 1 error");
                 return ERROR;
             }
             sprintf(error_cantsend, CANNOTSENDTOCHAN_MSG, target->name);
@@ -1050,7 +1050,6 @@ int send_privmsg_to_chan (user *origin, channel *target, char* msg) {
     /*create the message*/
     if (!(full_msg=(char*)malloc(sizeof(char)*(1 + IRC_MAX_NICK_LENGTH + 1 + strlen("PRIVMSG") + 1 + strlen(target->name) + 1\
             + strlen(msg) + strlen(IRC_MSG_END) + 1)))) {
-        syslog(LOG_NOTICE,"send_privmsg_to_chan malloc 2 error");
         return ERROR;
     }
     sprintf(full_msg, ":%s PRIVMSG %s %s%s", origin->nick, target->name, msg, IRC_MSG_END);
@@ -1276,7 +1275,6 @@ int user_join_chan(user *client,channel *chan,char *pass) {
     
     if (chan->topic) {
         if (!(chantopic=(char*)malloc(sizeof(char)*(strlen(chan->name) + 2 + strlen(chan->topic) + 2)))) {
-            syslog(LOG_NOTICE, "user_join_chan error in malloc 3");
             return ERROR;
         }
         sprintf(chantopic, "%s :%s", chan->name, chan->topic);
@@ -1332,10 +1330,11 @@ int create_channel(user* client,char* chname) {
 int irc_join_cmd (user* client, char* command) {
     int prefix=0, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
-    char *error_nochan=NULL;
+    char *error_nochan=NULL, *leave_msg=NULL;
     char *chnametmp=NULL, *chpasstmp=NULL;
     char *chnametoken=NULL, *chpasstoken=NULL, *targetnm, *targetpass=NULL;
     channel *target_channel;
+    channel_lst *elem = NULL, *tmp;
     
     /*if not registered action not allowed*/
     if (!user_registered(client->reg_modes)) {
@@ -1357,9 +1356,14 @@ int irc_join_cmd (user* client, char* command) {
     }
     
     if ((target_array[prefix+1][0]=='0') && (target_array[prefix+1][1]=='\0')) { /*join 0 means leave all channels currently in*/
-        
-        /*call quit cmd for every channel*/
-        
+        if (n_strings-prefix>2) leave_msg=target_array[prefix+2];
+        semaphore_bw(server_data.writer, server_data.readers);
+        LL_FOREACH_SAFE(client->channels_llist, elem, tmp) {
+            if ((target_channel=channel_hasht_find(elem->ch_name))){
+                user_part_chan(client, target_channel, leave_msg);
+            }
+        }
+        semaphore_aw(server_data.writer, server_data.readers);
         return OK;
     }
     
@@ -1791,7 +1795,7 @@ int irc_topic_cmd(user *client, char *command) {
         semaphore_ar(&(server_data.readers_num), server_data.writer, server_data.mutex_rvariables);
     }
 
-    else if ((n_strings-prefix) == 3){
+    else if ((n_strings-prefix) >= 3){
         semaphore_bw(server_data.writer, server_data.readers);
         ch_found = channel_hasht_find(target_array[1]);
         if(ch_found){
@@ -1801,6 +1805,7 @@ int irc_topic_cmd(user *client, char *command) {
                     ch_found->topic = NULL;
                 }
                 else if(strlen(target_array[2]) > 1){
+                    if (ch_found->topic) free(ch_found->topic);
                     ch_found->topic = malloc(strlen(target_array[2])+1);
                     if(!ch_found->topic){
                         semaphore_aw(server_data.writer, server_data.readers);
@@ -1818,7 +1823,7 @@ int irc_topic_cmd(user *client, char *command) {
 
                 }
                 else{
-                    if(!(find_nick_in_llist(client->nick, &(ch_found->operators_llist))) && !(chan_mode_t(ch_found->modes))) {
+                    if(!(find_nick_in_llist(client->nick, &(ch_found->operators_llist))) && (chan_mode_t(ch_found->modes))) {
                         details = malloc(strlen(target_array[1]) + 1 + strlen(":You're not channel operator") + 1);
                         sprintf(details, "%s :You're not channel operator", target_array[1]);
                         irc_send_numeric_response(client, ERR_CHANOPRIVSNEEDED, details);
@@ -1831,6 +1836,7 @@ int irc_topic_cmd(user *client, char *command) {
                             ch_found->topic = NULL;
                         }
                         else if(strlen(target_array[2]) > 1){
+                            if (ch_found->topic) free(ch_found->topic);
                             ch_found->topic = malloc(strlen(target_array[2])+1);
                             if(!ch_found->topic){
                                 semaphore_aw(server_data.writer, server_data.readers);
