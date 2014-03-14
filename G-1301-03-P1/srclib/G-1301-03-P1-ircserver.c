@@ -1708,7 +1708,7 @@ int irc_oper_cmd(user *client, char *command) {
         return OK;
     }
 
-    if(strcmp(target_array[1], OPER_USER) || strcmp(target_array[2], OPER_PASS)){
+    if(strcmp(target_array[prefix+1], OPER_USER) || strcmp(target_array[prefix+2], OPER_PASS)){
         irc_send_numeric_response(client, ERR_PASSWDMISMATCH, ":Password incorrect");
         return OK;
     }
@@ -1770,7 +1770,7 @@ int irc_topic_cmd(user *client, char *command) {
 
     if ((n_strings-prefix) == 2){
         semaphore_br(&(server_data.readers_num), server_data.readers, server_data.writer, server_data.mutex_access, server_data.mutex_rvariables);
-        ch_found = channel_hasht_find(target_array[1]);
+        ch_found = channel_hasht_find(target_array[prefix+1]);
         if(ch_found){
             if(!ch_found->topic){
                 details = malloc(strlen(ch_found->name) + 1 + strlen(":No topic is set") + 1);
@@ -1787,8 +1787,8 @@ int irc_topic_cmd(user *client, char *command) {
             }
         }
         else{
-            details = malloc(strlen(target_array[1]) + 1 + strlen(":No such channel") + 1);
-            sprintf(details, "%s :No such channel", target_array[1]);
+            details = malloc(strlen(target_array[prefix+1]) + 1 + strlen(":No such channel") + 1);
+            sprintf(details, "%s :No such channel", target_array[prefix+1]);
             irc_send_numeric_response(client, ERR_NOSUCHCHANNEL, details);
             free(details);
         }
@@ -1797,60 +1797,60 @@ int irc_topic_cmd(user *client, char *command) {
 
     else if ((n_strings-prefix) >= 3){
         semaphore_bw(server_data.writer, server_data.readers);
-        ch_found = channel_hasht_find(target_array[1]);
+        ch_found = channel_hasht_find(target_array[prefix+1]);
         if(ch_found){
             if(user_mode_o(client->reg_modes) && user_mode_O(client->reg_modes)){
-                if(ch_found->topic && strlen(target_array[2]) <= 1){
+                if(ch_found->topic && strlen(target_array[prefix+2]) <= 1){
                     free(ch_found->topic);
                     ch_found->topic = NULL;
                 }
-                else if(strlen(target_array[2]) > 1){
+                else if(strlen(target_array[prefix+2]) > 1){
                     if (ch_found->topic) free(ch_found->topic);
-                    ch_found->topic = malloc(strlen(target_array[2])+1);
+                    ch_found->topic = malloc(strlen(target_array[prefix+2])+1);
                     if(!ch_found->topic){
                         semaphore_aw(server_data.writer, server_data.readers);
                         return ERROR;
                     }
-                    strcpy(ch_found->topic, target_array[2]);
+                    strcpy(ch_found->topic, target_array[prefix+2]);
                 }
             }
             else{
-                if(!find_chname_in_llist(target_array[1], &(client->channels_llist))){
-                    details = malloc(strlen(target_array[1]) + 1 + strlen(":You're not on that channel") + 1);
-                    sprintf(details, "%s :You're not on that channel", target_array[1]);
+                if(!find_chname_in_llist(target_array[prefix+1], &(client->channels_llist))){
+                    details = malloc(strlen(target_array[prefix+1]) + 1 + strlen(":You're not on that channel") + 1);
+                    sprintf(details, "%s :You're not on that channel", target_array[prefix+1]);
                     irc_send_numeric_response(client, ERR_NOTONCHANNEL, details);
                     free(details);
 
                 }
                 else{
                     if(!(find_nick_in_llist(client->nick, &(ch_found->operators_llist))) && (chan_mode_t(ch_found->modes))) {
-                        details = malloc(strlen(target_array[1]) + 1 + strlen(":You're not channel operator") + 1);
-                        sprintf(details, "%s :You're not channel operator", target_array[1]);
+                        details = malloc(strlen(target_array[prefix+1]) + 1 + strlen(":You're not channel operator") + 1);
+                        sprintf(details, "%s :You're not channel operator", target_array[prefix+1]);
                         irc_send_numeric_response(client, ERR_CHANOPRIVSNEEDED, details);
                         free(details);
                     }
                     else{
                         
-                        if(ch_found->topic && strlen(target_array[2]) <= 1){
+                        if(ch_found->topic && strlen(target_array[prefix+2]) <= 1){
                             free(ch_found->topic);
                             ch_found->topic = NULL;
                         }
-                        else if(strlen(target_array[2]) > 1){
+                        else if(strlen(target_array[prefix+2]) > 1){
                             if (ch_found->topic) free(ch_found->topic);
-                            ch_found->topic = malloc(strlen(target_array[2])+1);
+                            ch_found->topic = malloc(strlen(target_array[prefix+2])+1);
                             if(!ch_found->topic){
                                 semaphore_aw(server_data.writer, server_data.readers);
                                 return ERROR;
                             }
-                            strcpy(ch_found->topic, target_array[2]);
+                            strcpy(ch_found->topic, target_array[prefix+2]);
                         }
                     }
                 }
             }
         }
         else{
-            details = malloc(strlen(target_array[1]) + 1 + strlen(":No such channel") + 1);
-            sprintf(details, "%s :No such channel", target_array[1]);
+            details = malloc(strlen(target_array[prefix+1]) + 1 + strlen(":No such channel") + 1);
+            sprintf(details, "%s :No such channel", target_array[prefix+1]);
             irc_send_numeric_response(client, ERR_NOSUCHCHANNEL, details);
             free(details);
         }
@@ -1903,8 +1903,8 @@ int irc_invite_cmd (user* client, char* command) {
     }
     else if (!(target_us=user_hasht_find(target_array[prefix+1]))) {
     	//ERR_NOSUCHNICK
-        if ((error=(char*)malloc(strlen(NOSUCHNICK_MSG)+ strlen(target_us->nick) +1))) {
-            sprintf(error, NOSUCHNICK_MSG, target_us->nick);
+        if ((error=(char*)malloc(strlen(NOSUCHNICK_MSG)+ strlen(target_array[prefix+1]) +1))) {
+            sprintf(error, NOSUCHNICK_MSG, target_array[prefix+1]);
             irc_send_numeric_response(client, ERR_NOSUCHNICK, error);
         } 
     }
