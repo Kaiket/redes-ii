@@ -8,7 +8,8 @@ LIB_DIR := lib
 # Macros
 CC := gcc
 CFLAGS := -I $(HEADER_DIR) -Wall
-LIBS := -lpthread
+CLIBS := `pkg-config --cflags gtk+-2.0`
+LIBS := `pkg-config --libs gtk+-2.0` -lpthread
 
 # Sources, objects, headers, names.
 SRC := $(wildcard $(SRC_DIR)/*.c)
@@ -32,10 +33,10 @@ $(BINARIES): $(OBJ) $(OBJLIB)
 	$(CC) $(CFLAGS) $(patsubst %, $(OBJ_DIR)/%.o, $@) $(OBJLIB) -o $@ $(LIBS)
 
 $(OBJ): $(SRC) $(HEADERLIB) $(HEADER_ALL)
-	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@ $(CLIBS)
 
 $(OBJLIB): $(SRCLIB) $(HEADERLIB) $(HEADER_ALL) $(HEADER_ALL_LIB)
-	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRCLIB_DIR)/%.c, $@) -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRCLIB_DIR)/%.c, $@) -o $@ $(CLIBS)
 
 # Library
 $(LIB_NAME): $(OBJLIB)
