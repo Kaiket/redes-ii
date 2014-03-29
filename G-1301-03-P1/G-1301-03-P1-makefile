@@ -4,12 +4,13 @@ SRCLIB_DIR := srclib
 OBJ_DIR := obj
 HEADER_DIR := includes
 LIB_DIR := lib
+BIN_DIR := bin
 
 # Macros
 CC := gcc
 CFLAGS := -I $(HEADER_DIR) -Wall
-CLIBS := `pkg-config --cflags gtk+-2.0`
-LIBS := `pkg-config --libs gtk+-2.0` -lpthread
+CLIBS :=  #`pkg-config --cflags gtk+-2.0` -lpthread
+LLIBS := -pthread #`pkg-config --libs gtk+-2.0` `pkg-config --libs libpulse-simple` -lpthread
 
 # Sources, objects, headers, names.
 SRC := $(wildcard $(SRC_DIR)/*.c)
@@ -26,16 +27,16 @@ DIR_NAME := ../G-1301-03-P1
 TGZ_NAME := ../G-1301-03-P1.tgz
 LIB_NAME := G-1301-03-P1-libnetworks.a
 
-BINARIES := $(patsubst $(OBJ_DIR)/%.o,%,$(OBJ))
+BINARIES := $(patsubst $(OBJ_DIR)/%.o,$(BIN_DIR)/%,$(OBJ))
 
 # Targets 
-$(BINARIES): $(OBJ) $(OBJLIB)
-	$(CC) $(CFLAGS) $(patsubst %, $(OBJ_DIR)/%.o, $@) $(OBJLIB) -o $@ $(LIBS)
+$(BINARIES): $(LIB_NAME) $(OBJ) 
+	$(CC) $(CFLAGS) $(patsubst $(BIN_DIR)/%,$(OBJ_DIR)/%.o,$@) -o $@ $(LIB_DIR)/$(LIB_NAME) $(LLIBS)
 
-$(OBJ): $(SRC) $(HEADERLIB) $(HEADER_ALL)
+$(OBJ): $(SRC) $(HEADER_ALL)
 	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@ $(CLIBS)
 
-$(OBJLIB): $(SRCLIB) $(HEADERLIB) $(HEADER_ALL) $(HEADER_ALL_LIB)
+$(OBJLIB): $(SRC) $(HEADER_ALL) $(HEADER_ALL_LIB)
 	$(CC) $(CFLAGS) -c $(patsubst $(OBJ_DIR)/%.o, $(SRCLIB_DIR)/%.c, $@) -o $@ $(CLIBS)
 
 # Library
@@ -47,24 +48,28 @@ $(LIB_NAME): $(OBJLIB)
 
 all: $(BINARIES)
 	
-
 pack: compress
-
-
+	
 tgz: compress
-
-
+	
 tar: compress
-
-
+	
 compress: clean
 	tar -czvf $(TGZ_NAME) $(DIR_NAME)
 
 clear: clean
-
-
+	
 clean:
 	rm -f $(wildcard *_test)
 	rm -f $(wildcard *main)
 	rm -f $(wildcard $(OBJ_DIR)/*.o)
-	rm -f $(TGZ_NAME)	
+	rm -f $(BIN_DIR)/*
+	rm -f $(TGZ_NAME)
+
+
+
+
+
+echo:
+	echo $(OBJ)
+
