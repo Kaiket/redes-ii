@@ -35,5 +35,7 @@ main()
 	}
 	fclose(f);
 	closePlay();
+
+	return 0;
 }
 

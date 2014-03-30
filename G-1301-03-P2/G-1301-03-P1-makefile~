@@ -9,8 +9,8 @@ BIN_DIR := bin
 # Macros
 CC := gcc
 CFLAGS := -I $(HEADER_DIR) -Wall
-CLIBS :=  #`pkg-config --cflags gtk+-2.0` -lpthread
-LLIBS := -pthread #`pkg-config --libs gtk+-2.0` `pkg-config --libs libpulse-simple` -lpthread
+CLIBS := `pkg-config --cflags gtk+-2.0` -lpthread
+LLIBS := `pkg-config --libs gtk+-2.0` `pkg-config --libs libpulse-simple` -lpthread
 
 # Sources, objects, headers, names.
 SRC := $(wildcard $(SRC_DIR)/*.c)
