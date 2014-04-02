@@ -60,6 +60,7 @@ GtkTextIter iter;
 GtkTextBuffer *buffer;
 GtkWidget *topicB, *externB, *secretB, *guestB, *privateB, *moderatedB;
 
+
 gboolean toggleButtonState(GtkToggleButton *togglebutton){return gtk_toggle_button_get_active(togglebutton);}
 
 /*******************************************************************************
@@ -225,6 +226,20 @@ void messageText(char *message)
 {
     gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, message, -1, "magenta_fg", "italic", "bold", "lmarg",  NULL);
     gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, "\n", -1, "magenta_fg",  NULL);
+}
+
+
+/*******************************************************************************
+*  Presenta un mensaje protegido por semaforos al usuario.                     *
+*                                                                              *
+*  Parámetros:                                                                 *
+* -Mensaje                                                               *
+*  Retorno:                                                                    *
+* -void                                                                  *
+*                                                                              *
+*******************************************************************************/
+void interfaceText(char *username, char *message, int type){
+
 }
 
 /*******************************************************************************

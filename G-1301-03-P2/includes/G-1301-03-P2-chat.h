@@ -20,6 +20,7 @@
 void errorWindow(char *msg);
 
 /* Interfaz de impresión de textos */
+void interfaceText(char *username, char *message, int type);
 void publicText(char *username, char *text);
 void privateText(char *username, char *text);
 void errorText(char *errormessage);

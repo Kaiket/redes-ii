@@ -1,5 +1,7 @@
 #ifndef __CONNECTION_H
 #define __CONNECTION_H
+
+#define PORT_LEN 6
 /**
  * @file G-1301-03-P1-connection.h
  * @details Functions for connecting processes.
@@ -68,7 +70,7 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize);
 
 
  /**
-  * @brief Receive messages through a socket
+  * @brief Receive messages through a socket.
   * @details
   * Receive messages to "data" as fragments of "segmentsize" bytes from socket
   * with "socket" file descriptor. It allocate memory for *data so it is 
@@ -84,11 +86,26 @@ int send_msg(int socket, void *data, size_t length, size_t segmentsize);
   * @param data pointer to pointer to data.
   * @param segmentsize max capacity of sending.
   * @param enddata data that point out end of data.
-  * @param enddata_len size of enddata
+  * @param enddata_len size of enddata.
   * @return Bytes received on success.
   * ERROR on failure (which is defined in G-1301-03-P1-types.h), and it writes the description of the error in the log
   * file.
   */
 int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size_t enddata_len);
+
+
+/*Client functions*/
+/**
+ * @brief Connects to a server.
+ * @details This function uses a host name (or host ip) and a service (port)
+ * to connect to a server, returning the file descriptor of the created socket.
+ * 
+ * @param host_name name/ip of the host.
+ * @param port port to which connect.
+ * 
+ * @return On success connect_to_server returns the file descriptor of the created socket.
+ * On failure, it returns ERROR (which is defined in G-1301-03-P1-types.h).
+ */
+int connect_to_server(char *host_name, int port);
 
 #endif

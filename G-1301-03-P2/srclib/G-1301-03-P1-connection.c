@@ -13,17 +13,16 @@
 #include <inttypes.h>
 #include <linux/tcp.h>
 #include <unistd.h>
+#include <netdb.h>
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-types.h"
 
- /*LOW LEVEL FUNCTIONS*/
+/*Opens a TCP socket*/
 int open_TCP_socket();
 int bind_socket(int socket, int port);
 int set_queue_length(int socket, int length);
 
-
 /*HIGH LEVEL FUNCTIONS (public)*/
-
 /*
  * Function: init_server
  * Implementation comments:
@@ -192,6 +191,59 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
     return total_received;
 }
 
+/*Client functions*/
+
+/*
+ * Function: connect_to_server
+ * Implementation comments:
+ *      It uses the host name and the port to create a socket and connect to a server.
+ */
+int connect_to_server(char *host_name, int port){
+
+    int sfd;
+    char service[PORT_LEN];
+    struct addrinfo hints, *result, *rp;
+
+    /*Hints initialization*/
+    bzero(&hints, sizeof(struct addrinfo));
+    hints.ai_flags = 0;                 /*No flags*/
+    hints.ai_family = AF_UNSPEC;        /*Either IPv4 or IPv6*/
+    hints.ai_socktype = SOCK_STREAM;    /*TCP socket*/
+    hints.ai_protocol = IPPROTO_TCP;    /*TCP protocol*/
+    hints.ai_addrlen = 0;               /*Must be zero/NULL to call getaddrinfo*/
+    hints.ai_addr = NULL;               /*Must be zero/NULL to call getaddrinfo*/
+    hints.ai_canonname = NULL;          /*Must be zero/NULL to call getaddrinfo*/
+    hints.ai_next = NULL;               /*Must be zero/NULL to call getaddrinfo*/
+
+    sprintf(service, "%d", port);
+    if(getaddrinfo(host_name, service, &hints, &result) != 0){
+        return ERROR;
+    }
+
+
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        
+        sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+
+        if (sfd != -1){
+
+            if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1){
+                freeaddrinfo(result);
+                return sfd;
+            }
+
+            close(sfd);
+                 
+        }
+    }
+
+    freeaddrinfo(result);
+
+    return ERROR;
+
+
+}
+
 
 /*LOW LEVEL FUNCTIONS (private)*/
 
@@ -220,5 +272,4 @@ int set_queue_length(int socket, int length) {
     if (length < 1) return ERROR_Q_LENGTH;
     return listen(socket, length);
 }
-
 
