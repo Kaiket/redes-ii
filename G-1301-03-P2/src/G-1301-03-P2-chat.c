@@ -73,6 +73,32 @@ char * getNombreReal()	{return (char *) gtk_entry_get_text(GTK_ENTRY(eNombreR));
 char * getServidor()	{return (char *) gtk_entry_get_text(GTK_ENTRY(eServidor));}
 int    getPuerto()	{return atoi(gtk_entry_get_text(GTK_ENTRY(ePuerto)));}
 
+
+
+/*******************************************************************************
+*  Presenta una ventana con un mensaje de error protegiendo con semaforos      *
+*                                                                              *
+*  Parámetros:                                                                 *
+*   -msg: Mensaje a presentar
+*   -mainthread: hilo principal                                              *
+*  Retorno:                                                                    *
+* -void                                                                  *
+*                                                                              *
+*******************************************************************************/
+void interfaceErrorWindow(char *msg, int main_thread){
+
+  if(!main_thread){
+    gdk_threads_enter();
+  }
+
+  errorWindow(msg);
+
+  if(!main_thread){
+    gdk_threads_leave();
+  }
+
+}
+
 /*******************************************************************************
 *  Presenta una ventana con un mensaje de error                                *
 *                                                                              *
@@ -233,12 +259,41 @@ void messageText(char *message)
 *  Presenta un mensaje protegido por semaforos al usuario.                     *
 *                                                                              *
 *  Parámetros:                                                                 *
-* -Mensaje                                                               *
+* -Nombre de usuario.
+* -Mensaje.
+* -Tipo de mensaje.
+* -Proceso que llama.
+*                                                            *
 *  Retorno:                                                                    *
 * -void                                                                  *
 *                                                                              *
 *******************************************************************************/
-void interfaceText(char *username, char *message, int type){
+void interfaceText(char *username, char *message, int type, int main_thread){
+
+  if(!main_thread){
+    gdk_threads_enter();
+  }
+
+  switch(type){
+    case MSG_TEXT:
+      messageText(message);
+      break;
+    case ERROR_TEXT:
+      errorText(message);
+      break;
+    case PRIVATE_TEXT:
+      privateText(username, message);
+      break;
+    case PUBLIC_TEXT:
+      publicText(username, message);
+      break;
+    default:
+      break;
+  }
+
+  if(!main_thread){
+    gdk_threads_leave();
+  }
 
 }
 

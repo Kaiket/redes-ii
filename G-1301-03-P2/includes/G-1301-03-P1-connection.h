@@ -106,6 +106,6 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
  * @return On success connect_to_server returns the file descriptor of the created socket.
  * On failure, it returns ERROR (which is defined in G-1301-03-P1-types.h).
  */
-int connect_to_server(char *host_name, int port);
+int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *arg));
 
 #endif

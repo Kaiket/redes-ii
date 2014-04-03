@@ -14,6 +14,7 @@
 #include <linux/tcp.h>
 #include <unistd.h>
 #include <netdb.h>
+ #include "G-1301-03-P1-thread_handling.h"
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-types.h"
 
@@ -198,7 +199,7 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
  * Implementation comments:
  *      It uses the host name and the port to create a socket and connect to a server.
  */
-int connect_to_server(char *host_name, int port){
+int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *arg)){
 
     int sfd;
     char service[PORT_LEN];
@@ -229,6 +230,10 @@ int connect_to_server(char *host_name, int port){
 
             if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1){
                 freeaddrinfo(result);
+                if(launch_thread(sfd, thread_routine) == ERROR){
+                    close(sfd);
+                    return ERROR;
+                }
                 return sfd;
             }
 

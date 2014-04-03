@@ -16,11 +16,20 @@
 	#define TRUE	1
 #endif
 
+#define MSG_TEXT 0
+#define ERROR_TEXT 1
+#define PRIVATE_TEXT 2
+#define PUBLIC_TEXT 3
+#define MAIN_THREAD 1
+
+#include <glib.h>
+
 /* Función de ventana de error */
+void interfaceErrorWindow(char *msg, int mainthread);
 void errorWindow(char *msg);
 
 /* Interfaz de impresión de textos */
-void interfaceText(char *username, char *message, int type);
+void interfaceText(char *username, char *message, int type, int mainthread);
 void publicText(char *username, char *text);
 void privateText(char *username, char *text);
 void errorText(char *errormessage);
