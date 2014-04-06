@@ -7,27 +7,51 @@
 #include <unistd.h>
 #include "G-1301-03-P2-chat.h"
 #include "G-1301-03-P1-types.h"
+#include "G-1301-03-P1-semaphores.h"
 #include "G-1301-03-P2-chat_funcs.h"
 #include "G-1301-03-P2-client_utility_functions.h"
+
+extern int sfd;
+extern int connected;
+extern char *nick;
+extern char *client_channel;
+extern int readers_num;
+extern int readers;
+extern int writer;
+extern int mutex_access;
+extern int mutex_rvariables;
 
 void connectClient(void){
 	
 	int port;
-	char *nick, *name, *real_name, *server_url;
+	char *name, *real_name, *server_url;
 	char message[BUFFER];
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+    if(connected){
+        interfaceText(NULL, "Ya está conectado a un servidor.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
+        return;
+    }
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
 	
 	/* Getting text of fields */
-	nick = getApodo();
+	semaphore_bw(writer, readers);
+    nick = getApodo();
+    semaphore_aw(writer, readers);
 	name =  getNombre();
 	real_name = getNombreReal();
     server_url =  getServidor();
     port = getPuerto();
 
     /* Empty nick, name, real_name or server_url field */
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
     if(!(strlen(nick) && strlen(name) && strlen(real_name) && strlen(server_url))) {
     	interfaceErrorWindow("Los campos\n\t-Apodo\n\t-Nombre\n\t-Nombre real\n\t-Servidor\nno pueden estar vacíos", MAIN_THREAD);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
     	return;
     }
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
 
     /* Empty port field */
     if(port <= 0){
@@ -49,6 +73,7 @@ void connectClient(void){
     }
 
     /*New session*/
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
     if (client_new_session(nick, name, real_name, server_url) == ERROR){
     	sprintf(message, "Fallo en la conexión con %s\nEn el sistema de logs ha quedado registrado el error" 
     					 "correspondiente a este intento de conexión.", server_url);
@@ -56,14 +81,34 @@ void connectClient(void){
     	syslog(LOG_ERR, "Failed while connecting to %s: %s", server_url, strerror(errno));
     	interfaceText(NULL, "Error de conexión", ERROR_TEXT, MAIN_THREAD);
     	close(sfd);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
     	return;
     }
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
+
+    semaphore_bw(writer, readers);
+    connected = 1;
+    semaphore_aw(writer, readers);
+
 }
 
 void disconnectClient(void)
 {
-	errorWindow("Función no implementada");
-	errorText("Función no implementada");
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+    if(!connected){
+        interfaceText(NULL, "No está conectado a ningún servidor.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
+        return;
+    }
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
+
+    if(client_send_irc_command("QUIT", ":Leaving") == ERROR){
+        interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                             "correspondiente a este intento de conexión.", MAIN_THREAD);
+        return;
+    }
+
 }
 
 void topicProtect(gboolean state)
@@ -104,7 +149,37 @@ void moderated(gboolean state)
 
 void newText (const char *msg)
 {
-	errorText("Función no implementada");
+    char command[BUFFER];
+
+    if(!msg){
+        return;
+    }
+
+    if(!strcmp(msg, "")){
+        return;
+    }
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+    if(!connected){
+        interfaceText(NULL, "No está conectado a ningún servidor.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
+        return;
+    }
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
+
+    if(!strncmp(msg, "/", 1)){
+        strcpy(command, msg + sizeof(char));
+        client_cmd_parsing(command, IRC_CMD);
+    }
+    else{
+        strcpy(command, msg);
+        client_cmd_parsing(command, IRC_MSG);
+    }
+
+    
+
+    
+
 }
 
 

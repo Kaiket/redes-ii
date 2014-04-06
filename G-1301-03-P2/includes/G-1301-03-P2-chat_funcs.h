@@ -4,7 +4,7 @@
 #define DFLT_PORT 6667
 #define BUFFER 512
 
-/*Global variables*/
-int sfd;
+#define IRC_MSG 0
+#define IRC_CMD 1
 
 #endif
