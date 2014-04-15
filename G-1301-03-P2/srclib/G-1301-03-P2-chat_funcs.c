@@ -13,8 +13,8 @@
 
 extern int sfd;
 extern int connected;
-extern char *nick;
-extern char *client_channel;
+extern char nick[BUFFER];
+extern char client_channel[BUFFER];
 extern int readers_num;
 extern int readers;
 extern int writer;
@@ -37,7 +37,7 @@ void connectClient(void){
 	
 	/* Getting text of fields */
 	semaphore_bw(writer, readers);
-    nick = getApodo();
+    strcpy(nick, getApodo());
     semaphore_aw(writer, readers);
 	name =  getNombre();
 	real_name = getNombreReal();

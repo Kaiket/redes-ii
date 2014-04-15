@@ -55,6 +55,7 @@
 #include <errno.h>
 #include <string.h>
 #include "G-1301-03-P2-chat.h"
+#include "G-1301-03-P2-chat_funcs.h"
 #include "G-1301-03-P1-semaphores.h"
 #include "G-1301-03-P1-types.h"
 
@@ -67,8 +68,9 @@ GtkWidget *topicB, *externB, *secretB, *guestB, *privateB, *moderatedB;
 
 int sfd;
 int connected;
-char *nick;
-char *client_channel;
+int in_channel;
+char nick[BUFFER];
+char client_channel[BUFFER];
 
 /*Semaphores variables*/
 int readers_num;
@@ -471,6 +473,7 @@ gboolean ordered_exit (GtkWidget *widget, GdkEvent *event, gpointer user_data){
   semaphore_rm(writer);
   semaphore_rm(mutex_access);
   semaphore_rm(mutex_rvariables);
+  close(sfd);
 
   return FALSE;
 
@@ -484,28 +487,33 @@ int main(int argc, char**argv)
   /*Inicialización de variables y semaforos*/
   sfd = 0;
   connected = 0;
-  nick = NULL;
-  client_channel = NULL;
+  in_channel = 0;
   readers_num = 0;
 
   if ((readers = semaphore_new()) == ERROR){
     syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
-      return EXIT_FAILURE;
+    return EXIT_FAILURE;
   }
 
   if ((writer = semaphore_new()) == ERROR){
     syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
-      return EXIT_FAILURE;
+    semaphore_rm(readers);
+    return EXIT_FAILURE;
   }
 
   if ((mutex_access = semaphore_new()) == ERROR){
     syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
-      return EXIT_FAILURE;
+    semaphore_rm(readers);
+    semaphore_rm(writer);
+    return EXIT_FAILURE;
   }
 
   if ((mutex_rvariables = semaphore_new()) == ERROR){
     syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
-      return EXIT_FAILURE;
+    semaphore_rm(readers);
+    semaphore_rm(writer);
+    semaphore_rm(mutex_access);
+    return EXIT_FAILURE;
   }
 
 
