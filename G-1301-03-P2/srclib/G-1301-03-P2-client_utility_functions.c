@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
+#include <unistd.h>
 #include "G-1301-03-P1-types.h"
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-thread_handling.h"
@@ -84,12 +85,21 @@ int client_receive_data_management(char *data){
         return OK;
     }
 
-    if(!strcmp(command, "001") || !strcmp(command, "002") || !strcmp(command, "003") || 
-       !strcmp(command, "372") || !strcasecmp(command, "NOTICE")){
+    /************************************
+     *                                  *
+     *          COMMAND REPLIES         *
+     *                                  *
+     ************************************/
+
+    /*Message from server*/
+    if(!strcmp(command, RPL_WELCOME_STR) || !strcmp(command, RPL_YOURHOST_STR) || !strcmp(command, RPL_CREATED_STR) || 
+       !strcmp(command, RPL_WHOISSERVER_STR) || !strcmp(command, RPL_WHOISIDLE_STR) || !strcmp(command, RPL_WHOISCHANNELS_STR) || 
+       !strcmp(command, RPL_MOTD_STR) || !strcasecmp(command, "NOTICE")){
         interfaceText(NULL, target_array[n_strings-1], MSG_TEXT, !MAIN_THREAD);
     }
 
-    else if(!strcasecmp(command, "JOIN")){
+    /*JOIN command*/
+    else if(!strcasecmp(command, JOIN_CMD_STR)){
         semaphore_bw(writer, readers);
 
         if (n_strings-prefix == 2){
@@ -109,6 +119,9 @@ int client_receive_data_management(char *data){
                         sprintf(message, "Has entrado en el canal %s.", client_channel);
                         interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
                         in_channel = 1;
+                        if(client_send_irc_command("WHO", client_channel) == ERROR){
+                            interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+                        }
                     }
                     else{
                         sprintf(message, "%s ha entrado en el canal %s.", recv_nick, client_channel);
@@ -121,7 +134,36 @@ int client_receive_data_management(char *data){
         semaphore_aw(writer, readers);
     }
 
-    else if(!strcasecmp(command, "PART")){
+    /*NICK command*/
+    else if(!strcasecmp(command, NICK_CMD_STR)){
+        semaphore_bw(writer, readers);
+
+        if (n_strings-prefix == 2){
+            if(prefix){
+                strcpy(recv_nick, target_array[0]+sizeof(char));
+                exclam = strchr(recv_nick, (int) '!');
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '%');
+                }
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '@');
+                }
+                if(exclam){
+                    *exclam = '\0';
+                    if(!strcasecmp(recv_nick, nick)){
+                        strcpy(nick, target_array[prefix+1]+sizeof(char));
+                        sprintf(message, "Tu nick ha cambiado a %s.", nick);
+                        interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                    }
+                }
+            }
+        }
+
+        semaphore_aw(writer, readers);
+    }
+
+    /*PART command*/
+    else if(!strcasecmp(command, PART_CMD_STR)){
 
         semaphore_bw(writer, readers);
 
@@ -148,7 +190,6 @@ int client_receive_data_management(char *data){
                             sprintf(message, "Has salido del canal %s.", client_channel);
                         }
                         interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
-                        in_channel = 0;
                     }
                     else{
                         if(n_strings-prefix > 2){
@@ -168,9 +209,8 @@ int client_receive_data_management(char *data){
         semaphore_aw(writer, readers);
     }
 
-    else if(!strcasecmp(command, "QUIT")){
-
-        semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+    /*QUIT command*/
+    else if(!strcasecmp(command, QUIT_CMD_STR)){
 
         if (n_strings-prefix >= 2){
             if(prefix){
@@ -194,13 +234,10 @@ int client_receive_data_management(char *data){
                 }
             }
         }
-
-        semaphore_ar(&readers_num, writer, mutex_rvariables);
     }
 
-    else if(!strcasecmp(command, "PRIVMSG")){
-
-        semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+    /*PRIVMSG command*/
+    else if(!strcasecmp(command, PRIVMSG_CMD_STR)){
 
         if (n_strings-prefix == 3){
             if(prefix){
@@ -224,16 +261,12 @@ int client_receive_data_management(char *data){
                 }
             }
         }
-
-        semaphore_ar(&readers_num, writer, mutex_rvariables);
-
     }
 
-    else if(!strcasecmp(command, "NICK")){
-        semaphore_bw(writer, readers);
-
-        if (n_strings-prefix == 2){
-            if(prefix){
+    /*INVITE command*/
+    else if(!strcasecmp(command, INVITE_CMD_STR)){
+        if (n_strings-prefix == 3){
+            if(prefix && *(target_array[n_strings-1]+sizeof(char)) == '#'){
                 strcpy(recv_nick, target_array[0]+sizeof(char));
                 exclam = strchr(recv_nick, (int) '!');
                 if(!exclam){
@@ -244,20 +277,20 @@ int client_receive_data_management(char *data){
                 }
                 if(exclam){
                     *exclam = '\0';
-                    if(!strcasecmp(recv_nick, nick)){
-                        strcpy(nick, target_array[prefix+1]+sizeof(char));
-                        sprintf(message, "Tu nick ha cambiado a %s.", nick);
-                        interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
-                        in_channel = 1;
+                    if(!strcasecmp(target_array[n_strings-2], nick)){
+                        sprintf(message, "Has sido invitado por %s al canal %s.", recv_nick, target_array[n_strings-1]+sizeof(char));
                     }
+                    else{
+                        sprintf(message, "%s ha sido invitado al canal %s por %s.", target_array[n_strings-2], target_array[n_strings-1]+sizeof(char), recv_nick);
+                    }
+                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
                 }
             }
         }
-
-        semaphore_aw(writer, readers);
     }
 
-    else if(!strcasecmp(command, "PING")){
+    /*PING command*/
+    else if(!strcasecmp(command, PING_CMD_STR)){
 
         if(n_strings-prefix == 2){
             strcpy(message, target_array[prefix+1]);
@@ -268,15 +301,81 @@ int client_receive_data_management(char *data){
 
     }
 
-    else if(!strcasecmp(command, "MODE")){
+    /*MODE command*/
+    else if(!strcasecmp(command, MODE_CMD_STR)){
         client_print_full_mesage((char **) &target_array, prefix, n_strings);
     }
 
-    else if(!strcasecmp(command, "ERROR")){
+    /*ERROR command*/
+    else if(!strcasecmp(command, ERROR_CMD_STR)){
         semaphore_bw(writer, readers);
+        in_channel = 0;
         connected = 0;
         interfaceText(NULL, "Ha sido desconectado.", MSG_TEXT, !MAIN_THREAD);
         semaphore_aw(writer, readers);
+    }
+
+    /************************************
+     *                                  *
+     *          NUMERIC REPLIES         *
+     *                                  *
+     ************************************/
+
+    /*WHOIS command*/
+
+    else if(!strcmp(command, RPL_WHOISUSER_STR)){
+        interfaceText(NULL, "Comienzo de información sobre usuario:", MSG_TEXT, !MAIN_THREAD);
+        interfaceText(NULL, target_array[n_strings-1], MSG_TEXT, !MAIN_THREAD);
+    }
+
+    else if(!strcmp(command, RPL_ENDOFWHOIS_STR)){
+        interfaceText(NULL, "Fin de información sobre usuario", MSG_TEXT, !MAIN_THREAD);
+    }
+
+    /*WHO command*/
+    else if(!strcmp(command, RPL_WHOREPLY_STR)){
+        if(n_strings > 2){
+            if(!strcasecmp(target_array[n_strings-3], nick)){
+                sprintf(message, "Comienzo de la lista de participantes del canal:");
+            }
+            else{
+                sprintf(message, "\t%s", target_array[n_strings-3]);
+            }
+            interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+        }
+    }
+
+    else if(!strcmp(command, RPL_ENDOFWHO_STR)){
+        interfaceText(NULL, "Fin de la lista de participantes del canal.", MSG_TEXT, !MAIN_THREAD);
+    }
+
+    /*LIST command*/
+    else if(!strcmp(command, RPL_LISTSTART_STR)){
+        interfaceText(NULL, "Comienzo de la lista de canales del servidor:", MSG_TEXT, !MAIN_THREAD);
+    }
+
+    else if(!strcmp(command, RPL_LIST_STR)){
+        if(n_strings > 2){
+            if(target_array[n_strings-1]+sizeof(char)){
+                sprintf(message, "\tCanal: %s\n\tTopic: %s\n", target_array[n_strings-3], target_array[n_strings-1]+sizeof(char));
+            }
+            else{
+                sprintf(message, "\tCanal: %s\n\tTopic: Sin topic.\n", target_array[n_strings-3]);
+            }
+            interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+        }
+    }
+
+    else if(!strcmp(command, RPL_LISTEND_STR)){
+        interfaceText(NULL, "Fin de la lista de canales del servidor.", MSG_TEXT, !MAIN_THREAD);
+    }
+
+    /*INVITE command*/
+    else if(!strcmp(command, RPL_INVITING_STR)){
+        if(n_strings > 1){
+            sprintf(message, "Has invitado a %s al canal %s.", target_array[n_strings-2], target_array[n_strings-1]);
+        }
+        interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
     }
 
     return OK;
@@ -303,7 +402,7 @@ void client_cmd_parsing(char *string, int type){
 
     int i, prefix, n_strings, split_ret_value;
     char *target_array[MAX_CMD_ARGS + 2];
-    char message[BUFFER];
+    char command[BUFFER], message[BUFFER], changed[BUFFER];
 
     switch (type){
         case IRC_MSG:
@@ -330,19 +429,89 @@ void client_cmd_parsing(char *string, int type){
                 interfaceText(NULL, "Comando no reconcido.", ERROR_TEXT, MAIN_THREAD);
                 return;
             }
-            
+            strcpy(command, target_array[prefix]);
+
             semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
-            if(!strcasecmp(target_array[prefix], "JOIN") && in_channel){
+            if(strcasecmp(command, EXIT_CMD_STR) && !connected){
+                interfaceText(NULL, "No está conectado a ningún servidor.", ERROR_TEXT, MAIN_THREAD);
+                semaphore_ar(&readers_num, writer, mutex_rvariables);
+                return;
+            }
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            
+            /*JOIN command, particular case*/
+            semaphore_bw(writer, readers);
+            if(!strcasecmp(command, JOIN_CMD_STR) && in_channel && n_strings-prefix > 1){
                 if(n_strings-prefix == 2){
                     if(*(target_array[prefix+1]) == '#'){
-                        if(client_send_irc_command("PART", client_channel) == ERROR){
+                        if(client_send_irc_command(PART_CMD_STR, client_channel) == ERROR){
                             interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+                        }
+                        else{
+                            in_channel = 0;
                         }
                     }
                 }
             }
-            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            semaphore_aw(writer, readers);
 
+            /*MSG command*/
+            if(!strcasecmp(command, MSG_CMD_STR) && n_strings-prefix > 2){
+                strcpy(command, PRIVMSG_CMD_STR);
+                sprintf(changed, ":%s", target_array[prefix+2]);
+                target_array[prefix+2] = changed;
+            }
+
+            /*QUERY command*/
+            else if (!strcasecmp(command, QUERY_CMD_STR) && n_strings-prefix == 2){
+                semaphore_bw(writer, readers);
+                if(in_channel){
+                    if(client_send_irc_command(PART_CMD_STR, client_channel) == ERROR){
+                        interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+                    }
+                    else{
+                        sprintf(message, "Comienzo de mensajes con %s", target_array[n_strings-1]);
+                        strcpy(client_channel, target_array[n_strings-1]);
+                        interfaceText(nick, message, PUBLIC_TEXT, MAIN_THREAD);
+                    }
+                }
+                else{
+                    in_channel = 1;
+                    sprintf(message, "Comienzo de mensajes con %s", target_array[n_strings-1]);
+                    strcpy(client_channel, target_array[n_strings-1]);
+                    interfaceText(nick, message, PUBLIC_TEXT, MAIN_THREAD);
+                    
+                }
+                semaphore_aw(writer, readers);
+                break;
+            }
+
+            /*ME command*/
+            else if(!strcasecmp(command, ME_CMD_STR) && n_strings-prefix > 1){
+
+                strcpy(message, target_array[prefix+1]);
+
+                for(i = 2; i + prefix < n_strings; ++i){
+                    strcat(message, " ");
+                    strcat(message, target_array[prefix+i]);
+                }
+
+                interfaceText(nick, message, PUBLIC_TEXT, MAIN_THREAD);
+                break;
+            }
+
+            /*EXIT command*/
+            else if(!strcasecmp(command, EXIT_CMD_STR) && n_strings-prefix == 1){
+                client_send_irc_command(QUIT_CMD_STR, NULL);
+                semaphore_rm(readers);
+                semaphore_rm(writer);
+                semaphore_rm(mutex_access);
+                semaphore_rm(mutex_rvariables);
+                close(sfd);
+                exit(EXIT_SUCCESS);
+            }
+
+            /*Any other command is sent just like that*/
             if(prefix + 1 < n_strings){
 
                 strcpy(message, target_array[prefix+1]);
@@ -352,13 +521,13 @@ void client_cmd_parsing(char *string, int type){
                     strcat(message, target_array[prefix+i]);
                 }
 
-                if(client_send_irc_command(target_array[prefix], message) == ERROR){
+                if(client_send_irc_command(command, message) == ERROR){
                     interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
                 }
             } 
 
             else{
-                if(client_send_irc_command(target_array[prefix], NULL) == ERROR){
+                if(client_send_irc_command(command, NULL) == ERROR){
                     interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
                 }
             }

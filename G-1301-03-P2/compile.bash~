@@ -1,0 +1,6 @@
+#!/bin/bash
+
+make -f G-1301-03-P2-makefile clean
+clear
+clear
+make -f G-1301-03-P2-makefile all

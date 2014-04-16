@@ -159,19 +159,18 @@ void newText (const char *msg)
         return;
     }
 
-    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
-    if(!connected){
-        interfaceText(NULL, "No está conectado a ningún servidor.", ERROR_TEXT, MAIN_THREAD);
-        semaphore_ar(&readers_num, writer, mutex_rvariables);
-        return;
-    }
-    semaphore_ar(&readers_num, writer, mutex_rvariables);
-
     if(!strncmp(msg, "/", 1)){
         strcpy(command, msg + sizeof(char));
         client_cmd_parsing(command, IRC_CMD);
     }
     else{
+        semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+        if(!connected){
+            interfaceText(NULL, "No está conectado a ningún servidor.", ERROR_TEXT, MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
         strcpy(command, msg);
         client_cmd_parsing(command, IRC_MSG);
     }
