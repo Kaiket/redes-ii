@@ -66,18 +66,22 @@ GtkTextIter iter;
 GtkTextBuffer *buffer;
 GtkWidget *topicB, *externB, *secretB, *guestB, *privateB, *moderatedB;
 
-int sfd;
-int connected;
-int in_channel;
-char nick[BUFFER];
-char client_channel[BUFFER];
+int sfd;                      /*Socket decriptor*/
+int connected;                /*Connected flag*/
+int in_channel;               /*Joined to a channel flag*/
+int server_called;            /*Server command has been written*/
+int queried;                  /*In a queried window*/
+char nick[BUFFER];            /*Nickname*/
+char client_channel[BUFFER];  /*Channel name*/
+char client_server[BUFFER];   /*Server name*/
+int port;                     /*Port number*/
 
 /*Semaphores variables*/
-int readers_num;
-int readers;
-int writer;
-int mutex_access;
-int mutex_rvariables;
+int readers_num;              /*Number of readers*/
+int readers;                  /*Semaphore*/
+int writer;                   /*Semaphore*/
+int mutex_access;             /*Semaphore*/
+int mutex_rvariables;         /*Semaphore*/
 
 
 gboolean toggleButtonState(GtkToggleButton *togglebutton){return gtk_toggle_button_get_active(togglebutton);}
@@ -488,6 +492,9 @@ int main(int argc, char**argv)
   sfd = 0;
   connected = 0;
   in_channel = 0;
+  queried = 0;
+  port = 0;
+  server_called = 0;
   readers_num = 0;
 
   if ((readers = semaphore_new()) == ERROR){

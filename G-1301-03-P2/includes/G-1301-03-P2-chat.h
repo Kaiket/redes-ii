@@ -25,10 +25,32 @@
 #include <glib.h>
 
 /* Función de ventana de error */
+/**
+ * @brief Show an error window with a message.
+ * @details The window shown contains a error message written by the user.
+ * 
+ * @param msg message to show.
+ * @param mainthread If the calling process is the main process (gtk main process) it must be
+ * diferent than cero. Else, it must be zero.
+ */
 void interfaceErrorWindow(char *msg, int mainthread);
 void errorWindow(char *msg);
 
 /* Interfaz de impresión de textos */
+/**
+ * @brief Prints a message on the interface.
+ * @details The message may be plain text, error text, private text from an user or
+ * public text. If the calling thread is the main thread, the last argument must not 
+ * be zero. If the calling process is not the main thread, the last argument must be
+ * zero.
+ * 
+ * @param username name of the user for public and private text types. It may be null.
+ * @param message message to print.
+ * @param type It the macro *_TEXT. Depending on the type of message the asterisk can be MSG,
+ * ERROR, PRIVATE or PUBLIC.
+ * @param mainthread If the calling process is the main process (gtk main process) it must be
+ * diferent than cero. Else, it must be zero.
+ */
 void interfaceText(char *username, char *message, int type, int mainthread);
 void publicText(char *username, char *text);
 void privateText(char *username, char *text);

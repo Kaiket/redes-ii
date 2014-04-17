@@ -148,5 +148,6 @@
 #define MSG_CMD_STR "MSG"
 #define QUERY_CMD_STR "QUERY"
 #define ME_CMD_STR "ME"
+#define SERVER_CMD_STR "SERVER"
 
 #endif
