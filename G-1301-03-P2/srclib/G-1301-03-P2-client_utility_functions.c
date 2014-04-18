@@ -75,11 +75,12 @@ void *client_thread_listener(void *arg){
 }
 
 /**
- * @brief [brief description]
- * @details [long description]
+ * @brief Manage the received data.
+ * @details Parses the commands receveid and takes the proper action informing
+ * in each case to the client.
  * 
- * @param data [description]
- * @return [description]
+ * @param data received.
+ * @return OK or ERROR, depending on the parsing or on the sending.
  */
 int client_receive_data_management(char *data){
 
@@ -114,7 +115,7 @@ int client_receive_data_management(char *data){
         semaphore_aw(writer, readers);
 
     }
-
+    /*More weolcome.*/
     if(!strcmp(command, RPL_YOURHOST_STR) || !strcmp(command, RPL_CREATED_STR) || 
        !strcmp(command, RPL_WHOISSERVER_STR) || !strcmp(command, RPL_WHOISIDLE_STR) || !strcmp(command, RPL_WHOISCHANNELS_STR) || 
        !strcmp(command, RPL_MOTD_STR) || !strcmp(command, RPL_NOWAWAY_STR) || !strcasecmp(command, "NOTICE")){
