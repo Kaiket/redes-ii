@@ -247,6 +247,57 @@ int client_receive_data_management(char *data){
         semaphore_aw(writer, readers);
     }
 
+    /*KICK command*/
+    else if(!strcasecmp(command, KICK_CMD_STR)){
+
+        semaphore_bw(writer, readers);
+
+        if (n_strings-prefix >= 2){
+            if(prefix && (*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&')){
+                strcpy(recv_nick, target_array[0]+sizeof(char));
+                /*Getting user*/
+                exclam = strchr(recv_nick, (int) '!');
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '%');
+                }
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '@');
+                }
+                if(exclam){
+                    *exclam = '\0';
+                    strcpy(more_info, target_array[prefix+1]);
+                    /*You have kicked someone*/
+                    if(!strcmp(recv_nick, nick)){
+                        if(!strcmp(target_array[prefix+2], nick)){
+                            sprintf(message, "Te has expulsado a ti mismo del canal %s", more_info);
+                            queried = 0;
+                            in_channel = 0;
+                        }
+                        else{
+                            sprintf(message, "Has expulsado a %s del canal %s", target_array[prefix+2], more_info);
+                            queried = 0;
+                            in_channel = 0;
+                        }
+                        interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                    }
+                    /*Someone has kick some other*/
+                    else{
+                        if(!strcmp(target_array[prefix+2], nick)){
+                            sprintf(message, "%s te ha expulsado del canal %s", recv_nick, more_info);
+                        }
+                        else{
+                            sprintf(message, "%s ha expulsado a %s del canal %s", recv_nick, target_array[prefix+2], more_info);
+                        }
+                        interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                    }
+                }
+            }
+        }
+
+        semaphore_aw(writer, readers);
+    }
+
+
     /*QUIT command*/
     else if(!strcasecmp(command, QUIT_CMD_STR)){
 
@@ -345,7 +396,60 @@ int client_receive_data_management(char *data){
 
     /*MODE command*/
     else if(!strcasecmp(command, MODE_CMD_STR)){
-        client_print_full_mesage((char **) &target_array, prefix, n_strings);
+
+        /*Channel mode changed*/
+        if(n_strings-prefix == 3){
+            if(prefix && (*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&')){
+                strcpy(recv_nick, target_array[0]+sizeof(char));
+                /*Getting user*/
+                exclam = strchr(recv_nick, (int) '!');
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '%');
+                }
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '@');
+                }
+                
+                if(exclam){
+                    *exclam = '\0';
+                    if(!strcasecmp(recv_nick, nick)){
+                        sprintf(message, "Has cambiado el modo del canal %s a %s.", target_array[prefix+1], target_array[prefix+2]);
+                    }
+                    else{
+                        sprintf(message, "%s ha cambiado el modo del canal %s a %s.", recv_nick, target_array[prefix+1], target_array[prefix+2]);
+                    }
+                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                }
+            }
+        }
+        /*User mode in channel changed*/
+        else if(n_strings-prefix == 4){
+            if(prefix && (*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&')){
+                strcpy(recv_nick, target_array[0]+sizeof(char));
+                /*Getting user*/
+                exclam = strchr(recv_nick, (int) '!');
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '%');
+                }
+                if(!exclam){
+                    exclam = strchr(recv_nick, (int) '@');
+                }
+                if(exclam){
+                    *exclam = '\0';
+                    if(!strcasecmp(recv_nick, nick)){
+                        sprintf(message, "Has cambiado el modo en el canal %s de %s a %s.", target_array[prefix+1], target_array[prefix+3], target_array[prefix+2]);
+                    }
+                    else{
+                        sprintf(message, "%s ha cambiado el modo en el canal %s de %s a %s.", recv_nick, target_array[prefix+1], target_array[prefix+3], target_array[prefix+2]);
+                    }
+                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                }
+            }
+        }
+        else{
+            client_print_full_mesage((char **) &target_array, prefix, n_strings);
+        }
+        
     }
 
     /*ERROR command*/
@@ -621,6 +725,28 @@ void client_cmd_parsing(char *string, int type){
                 }
             }
 
+            /*MODE command*/
+            else if(!strcasecmp(command, BAN_CMD_STR)){
+                semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+                if(n_strings-prefix == 2){
+                    sprintf(message, "%s +b %s", client_channel, target_array[n_strings-1]);
+                    if(client_send_irc_command(MODE_CMD_STR, message) == ERROR){
+                        interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+                    }
+                }
+                else if(n_strings-prefix == 3){
+                    sprintf(message, "%s +b %s", target_array[n_strings-2], target_array[n_strings-1]);
+                    if(client_send_irc_command(MODE_CMD_STR, message) == ERROR){
+                        interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+                    }
+                }
+                else{
+                    interfaceText(NULL, "BAN: uso incorrecto", ERROR_TEXT, MAIN_THREAD);
+                }
+                semaphore_ar(&readers_num, writer, mutex_rvariables);
+                break;
+            }
+
             /*SERVER command*/
             else if(!strcasecmp(command, SERVER_CMD_STR)){
                 semaphore_bw(writer, readers);
@@ -750,4 +876,25 @@ int client_send_irc_command(char *command, char *parameters){
 	sprintf(message, "%s %s\r\n", command, parameters);
 	return send_msg(sfd, (void *) message, strlen(command)+strlen(parameters)+3, IRC_MSG_LENGTH);
 
+}
+
+int client_check_full_connection(){
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+    if(!connected){
+        interfaceText(NULL, "No está conectado a ningún servidor.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
+        return FALSE;
+    }
+    else if (!in_channel){
+        interfaceText(NULL, "No está participando en ningún canal.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
+        return FALSE;
+    }
+    else if(queried){
+        interfaceText(NULL, "No está participando en ningún canal.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_ar(&readers_num, writer, mutex_rvariables);
+        return FALSE;
+    }
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
+    return TRUE;
 }

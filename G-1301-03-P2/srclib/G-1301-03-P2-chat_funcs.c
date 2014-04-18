@@ -138,38 +138,203 @@ void disconnectClient(void)
 
 void topicProtect(gboolean state)
 {
-	errorWindow("Función no implementada");
-	errorText("Función no implementada");
+
+    char parameters[BUFFER];
+
+	if(client_check_full_connection() == FALSE){
+        return;
+    }
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+
+    /*Send mode message*/
+    if(state){
+        sprintf(parameters, "%s +t", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+    else{
+        sprintf(parameters, "%s -t", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
+        
+
 }
 
 void externMsg(gboolean state)
 {
-	errorWindow("Función no implementada");
-	errorText("Función no implementada");
+	char parameters[BUFFER];
+
+    if(client_check_full_connection() == FALSE){
+        return;
+    }
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+
+    /*Send mode message*/
+    if(state){
+        sprintf(parameters, "%s +n", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+    else{
+        sprintf(parameters, "%s -n", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
 }
 
 void secret(gboolean state)
 {
-	errorWindow("Función no implementada");
-	errorText("Función no implementada");
+	char parameters[BUFFER];
+
+    if(client_check_full_connection() == FALSE){
+        return;
+    }
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+
+    /*Send mode message*/
+    if(state){
+        sprintf(parameters, "%s +s", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+    else{
+        sprintf(parameters, "%s -s", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
 }
 
 void guests(gboolean state)
 {
-	errorWindow("Función no implementada");
-	errorText("Función no implementada");
+	char parameters[BUFFER];
+
+    if(client_check_full_connection() == FALSE){
+        return;
+    }
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+
+    /*Send mode message*/
+    if(state){
+        sprintf(parameters, "%s +i", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+    else{
+        sprintf(parameters, "%s -i", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
 }
 
 void privated(gboolean state)
 {
-	errorWindow("Función no implementada");
-	errorText("Función no implementada");
+	char parameters[BUFFER];
+
+    if(client_check_full_connection() == FALSE){
+        return;
+    }
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+
+    /*Send mode message*/
+    if(state){
+        sprintf(parameters, "%s +p", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+    else{
+        sprintf(parameters, "%s -p", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
 }
 
 void moderated(gboolean state)
 {
-	errorWindow("Función no implementada");
-	errorText("Función no implementada");
+	char parameters[BUFFER];
+
+    if(client_check_full_connection() == FALSE){
+        return;
+    }
+
+    semaphore_br(&readers_num, readers, writer, mutex_access, mutex_rvariables);
+
+    /*Send mode message*/
+    if(state){
+        sprintf(parameters, "%s +m", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+    else{
+        sprintf(parameters, "%s -m", client_channel);
+        if(client_send_irc_command(MODE_CMD_STR, parameters) == ERROR){
+            interfaceErrorWindow("Error al desconectar, inténtelo de nuevo.En el sistema de logs ha quedado registrado el error" 
+                                 "correspondiente a este intento de conexión.", MAIN_THREAD);
+            semaphore_ar(&readers_num, writer, mutex_rvariables);
+            return;
+        }
+    }
+
+    semaphore_ar(&readers_num, writer, mutex_rvariables);
 }
 
 /**
@@ -221,13 +386,4 @@ void newText (const char *msg)
         client_cmd_parsing(command, IRC_MSG);
     }
 
-    
-
-    
-
 }
-
-
-
-
-

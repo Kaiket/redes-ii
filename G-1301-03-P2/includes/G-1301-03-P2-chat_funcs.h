@@ -149,5 +149,7 @@
 #define QUERY_CMD_STR "QUERY"
 #define ME_CMD_STR "ME"
 #define SERVER_CMD_STR "SERVER"
+#define KICK_CMD_STR "KICK"
+#define BAN_CMD_STR "BAN"
 
 #endif

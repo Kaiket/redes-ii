@@ -86,4 +86,13 @@ int client_new_session(char *nick, char *name, char *real_name, char *server_url
  */
 int client_send_irc_command(char *command, char *parameters);
 
+/**
+ * @brief Check if the client is full connected.
+ * @details Here, full connected means that it is connected to a server and
+ * joined to a channel.
+ * 
+ * @return FALSE if the checking results not successful. TRUE if it does.
+ */
+int client_check_full_connection();
+
 #endif
