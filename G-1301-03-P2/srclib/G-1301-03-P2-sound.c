@@ -7,9 +7,9 @@
 #include <pulse/error.h>
 
 pa_sample_spec ss = {
-.format = PA_SAMPLE_S16BE,
-.rate = 44100,
-.channels = 2
+.format = PA_SAMPLE_ULAW,
+.rate = 8000,
+.channels = 1
 };
 
 pa_simple *sr = NULL, *sp = NULL;
@@ -33,8 +33,8 @@ int sampleFormat(enum pa_sample_format format, int channels)
 
   if (ss.format == PA_SAMPLE_ULAW) return 0;
   if (ss.format == PA_SAMPLE_ALAW) return 8;
-  if (ss.format == PA_SAMPLE_S16BE) return 10;
-  if (ss.format == PA_SAMPLE_S16BE) return 11;
+  if (ss.format == PA_SAMPLE_S16BE && channels==1) return 10;
+  if (ss.format == PA_SAMPLE_S16BE && channels==2) return 11;
 
   return -1;
 }
