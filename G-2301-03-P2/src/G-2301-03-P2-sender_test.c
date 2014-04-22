@@ -11,9 +11,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include "../includes/G-1301-03-P2-call_funcs.h"
-#include "../includes/G-1301-03-P2-udp.h"
-#include "../includes/G-1301-03-P2-sound.h"
+#include "G-2301-03-P2-call_funcs.h"
+#include "G-2301-03-P2-udp.h"
+#include "G-2301-03-P2-sound.h"
 
 int main (int argc, char *argv[]) {
     
