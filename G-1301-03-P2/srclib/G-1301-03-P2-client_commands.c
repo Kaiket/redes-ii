@@ -195,8 +195,8 @@ void command_kick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
                 *exclam = '\0';
                 strcpy(more_info, target_array[prefix+1]);
                 /*You have kicked someone*/
-                if(!strcmp(recv_nick, nick)){
-                    if(!strcmp(target_array[prefix+2], nick)){
+                if(!strcasecmp(recv_nick, nick)){
+                    if(!strcasecmp(target_array[prefix+2], nick)){
                         sprintf(message, "Te has expulsado a ti mismo del canal %s", more_info);
                         queried = 0;
                         in_channel = 0;
@@ -210,7 +210,7 @@ void command_kick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
                 }
                 /*Someone has kick some other*/
                 else{
-                    if(!strcmp(target_array[prefix+2], nick)){
+                    if(!strcasecmp(target_array[prefix+2], nick)){
                         sprintf(message, "%s te ha expulsado del canal %s", recv_nick, more_info);
                     }
                     else{
@@ -281,7 +281,18 @@ void command_privmsg_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
                     interfaceText(recv_nick, message, PUBLIC_TEXT, !MAIN_THREAD);
                 }
                 else{
-                    interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+                    if(!strncasecmp(message, PCALL_CMD_STR, strlen(PCALL_CMD_STR))){
+                        command_pcall_in((char **) target_array, prefix, n_strings, recv_nick);
+                    }
+                    else if(!strncasecmp(message, PACCEPT_CMD_STR, strlen(PACCEPT_CMD_STR))){
+                        command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
+                    }
+                    else if(!strncasecmp(message, PCLOSE_CMD_STR, strlen(PCLOSE_CMD_STR))){
+                        command_pclose_in((char **) target_array, prefix, n_strings, recv_nick);
+                    }
+                    else{
+                        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+                    }
                 }
             }
         }
@@ -657,7 +668,7 @@ int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
 	strcpy(called_nick, target_array[prefix+1]);
 
     /*Message*/
-	sprintf(message, "%s :PCALL %s %d", called_nick, my_calling_ip, my_calling_port);
+	sprintf(message, "%s :%s %s %d", called_nick, PCALL_CMD_STR, my_calling_ip, my_calling_port);
 	if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
 		interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
 	}
@@ -686,7 +697,7 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
     semaphore_bw(writer, readers);
 
     /*Checking user*/
-    if(!strcasecmp(incoming_nick, target_array[prefix+1])){
+    if(strcasecmp(incoming_nick, target_array[prefix+1])){
         sprintf(message, "La ultima llamada recibida no es del usuario %s.", target_array[prefix+1]);
         interfaceText(NULL, message, ERROR_TEXT, MAIN_THREAD);
         semaphore_aw(writer, readers);
@@ -718,7 +729,7 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
     strcpy(called_nick, target_array[prefix+1]);
 
     /*En el sprintf realmente va la IP*/
-    sprintf(message, "%s :PACCEPT %s %d", called_nick, my_calling_ip, my_calling_port);
+    sprintf(message, "%s :%s %s %d", called_nick, PACCEPT_CMD_STR, my_calling_ip, my_calling_port);
     if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
         interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
         end_call();
@@ -726,9 +737,9 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
         return OK;
     }
 
-    semaphore_aw(writer, readers);
-
     rcall = call(their_calling_ip, their_calling_port);
+
+    semaphore_aw(writer, readers);
 
     if(rcall == ERROR_PARAM){
         interfaceText(NULL, "Destino inválido.", ERROR_TEXT, MAIN_THREAD);
@@ -755,7 +766,7 @@ int command_pclose_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_s
         return ERROR;
     }
 
-    if(!already_calling() || !strcasecmp(called_nick, target_array[prefix+1])){
+    if(!already_calling() || strcasecmp(called_nick, target_array[prefix+1])){
         end_call();
         return OK;
     }
@@ -763,12 +774,122 @@ int command_pclose_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_s
     end_call();
 
     interfaceText(NULL, "Llamada cancelada.", ERROR_TEXT, MAIN_THREAD);
-    sprintf(message, "%s :PCANCEL", target_array[prefix+1]);
+    sprintf(message, "%s :%s", target_array[prefix+1], PCLOSE_CMD_STR);
 
     if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
         interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
     }
 
 	return OK;
+
+}
+
+void command_pcall_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick){
+
+    char message[BUFFER];
+    char *ip, *port;
+
+    /*Receive message*/
+    strcpy(message, target_array[prefix+2]+sizeof(char));
+
+    ip = strstr(message, " ")+sizeof(char);
+    if(!ip){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    port = strstr(ip, " ")+sizeof(char);
+    if(!port){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    semaphore_bw(writer, readers);
+    strcpy(incoming_nick, recv_nick);
+
+    strcpy(their_calling_ip, ip);
+    ip = strstr(their_calling_ip, " ");
+    *ip = '\0';
+
+    their_calling_port = atoi(port);
+    semaphore_aw(writer, readers);
+
+    sprintf(message, "Recibida llamada de %s.", recv_nick);
+    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+    sprintf(message, "Para contestar: /PACCEPT %s", recv_nick);
+    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+
+
+}
+
+void command_paccept_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick){
+
+    int rcall;
+    char message[BUFFER];
+    char *ip, *port;
+
+    /*Receive message*/
+    strcpy(message, target_array[prefix+2]+sizeof(char));
+
+    ip = strstr(message, " ")+sizeof(char);
+    if(!ip){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    port = strstr(ip, " ")+sizeof(char);
+    if(!port){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    semaphore_bw(writer, readers);
+    strcpy(called_nick, recv_nick);
+
+    strcpy(their_calling_ip, ip);
+    ip = strstr(their_calling_ip, " ");
+    *ip = '\0';
+
+    their_calling_port = atoi(port);
+    
+    rcall = call(their_calling_ip, their_calling_port);
+
+    semaphore_aw(writer, readers);
+
+    if(rcall == ERROR_PARAM){
+        interfaceText(NULL, "Destino inválido.", ERROR_TEXT, !MAIN_THREAD);
+        end_call();
+    }
+
+    else if (rcall < 0){
+        interfaceText(NULL, "Error al establecer la conexión.", ERROR_TEXT, !MAIN_THREAD);
+        interfaceText(NULL, their_calling_ip, ERROR_TEXT, MAIN_THREAD);
+        end_call();
+    }
+
+    else{
+        sprintf(message, "Llamada aceptada por %s. Conexión establecida.", recv_nick);
+        interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+    }
+
+
+}
+
+void command_pclose_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick){
+
+    char message[BUFFER];
+
+    /*Receive message*/
+    strcpy(message, target_array[prefix+2]+sizeof(char));
+
+    if(strlen(message) != strlen(PCLOSE_CMD_STR)){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    sprintf(message, "Llamada finalizada por %s. Conexión cerrada.", recv_nick);
+    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+
+    end_call();
 
 }

@@ -218,7 +218,7 @@ int call(char* ip, u_int16_t port) {
     caller_ip=c_ip;
     calling=1;
     /*create sender thread*/
-    if (!pthread_create(&sender_thread, NULL, sender_thread_routine, (void*)caller_params)) {
+    if (pthread_create(&sender_thread, NULL, sender_thread_routine, (void*)caller_params)) {
         sender_thread=0;
         syslog(LOG_ERR, "Client: ERROR creating audio recorder/sender thread.");
         end_call();
@@ -226,7 +226,7 @@ int call(char* ip, u_int16_t port) {
     }
     
     /*create receiver thread*/
-    if (!pthread_create(&receiver_thread, NULL, receiver_thread_routine, NULL)) {
+    if (pthread_create(&receiver_thread, NULL, receiver_thread_routine, NULL)) {
         receiver_thread=0;
         syslog(LOG_ERR, "Client: ERROR creating audio player/receiver thread.");
         end_call();

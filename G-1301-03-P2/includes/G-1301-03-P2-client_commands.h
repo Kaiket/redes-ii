@@ -49,7 +49,11 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
 
 int command_pclose_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings);
 
+void command_pcall_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick);
 
+void command_paccept_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick);
+
+void command_pclose_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick);
 
 
 
