@@ -651,7 +651,7 @@ int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
 		return OK;
 	}
 	else if(my_calling_port <= 0){
-		interfaceText(NULL, "Error durante la creación del socket.", ERROR_TEXT, MAIN_THREAD);
+		interfaceText(NULL, "Error durante el establecimiento de la llamada.", ERROR_TEXT, MAIN_THREAD);
 		semaphore_aw(writer, readers);
 		return OK;
 	}
@@ -671,9 +671,12 @@ int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
 	sprintf(message, "%s :%s %s %d", called_nick, PCALL_CMD_STR, my_calling_ip, my_calling_port);
 	if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
 		interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        return OK;
 	}
 
 	semaphore_aw(writer, readers);
+    interfaceText(NULL, "Llamada realizada.", MSG_TEXT, MAIN_THREAD);
 	return OK;
 
 }
@@ -712,7 +715,7 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
         return OK;
     }
     else if(my_calling_port <= 0){
-        interfaceText(NULL, "Error durante la creación del socket.", ERROR_TEXT, MAIN_THREAD);
+        interfaceText(NULL, "Error durante el establecimiento de la llamada.", ERROR_TEXT, MAIN_THREAD);
         semaphore_aw(writer, readers);
         return OK;
     }
@@ -751,6 +754,10 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
         interfaceText(NULL, "Error al establecer la conexión.", ERROR_TEXT, MAIN_THREAD);
         end_call();
         return OK;
+    }
+
+    else{
+        interfaceText(NULL, "Conexión establecida.", MSG_TEXT, MAIN_THREAD);
     }
 
     return OK;

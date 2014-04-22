@@ -44,7 +44,7 @@ $(LIB_NAME): $(OBJLIB)
 	ar -rv $(LIB_DIR)/$@ $^
 
 # PHONY calls
-.PHONY: all clean clear compress tar tgz pack
+.PHONY: clean clear compress tar tgz pack
 
 all: $(BINARIES)
 	
