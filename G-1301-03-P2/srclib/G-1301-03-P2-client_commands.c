@@ -656,7 +656,7 @@ int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     /*Storing nick*/
 	strcpy(called_nick, target_array[prefix+1]);
 
-	/*En el sprintf realmente va la IP*/
+    /*Message*/
 	sprintf(message, "%s :PCALL %s %d", called_nick, my_calling_ip, my_calling_port);
 	if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
 		interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
@@ -684,6 +684,14 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
     }
 
     semaphore_bw(writer, readers);
+
+    /*Checking user*/
+    if(!strcasecmp(incoming_nick, target_array[prefix+1])){
+        sprintf(message, "La ultima llamada recibida no es del usuario %s.", target_array[prefix+1]);
+        interfaceText(NULL, message, ERROR_TEXT, MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        return OK;
+    }
 
     /*Getting port*/
     my_calling_port = setup_call(0, TIMEOUT);
@@ -725,14 +733,12 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
     if(rcall == ERROR_PARAM){
         interfaceText(NULL, "Destino inválido.", ERROR_TEXT, MAIN_THREAD);
         end_call();
-        semaphore_aw(writer, readers);
         return OK;
     }
 
     else if (rcall < 0){
         interfaceText(NULL, "Error al establecer la conexión.", ERROR_TEXT, MAIN_THREAD);
         end_call();
-        semaphore_aw(writer, readers);
         return OK;
     }
 
@@ -742,7 +748,6 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
 
 int command_pclose_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
-
     char message[BUFFER];
 
     /*Checking parameters*/
@@ -750,8 +755,14 @@ int command_pclose_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_s
         return ERROR;
     }
 
+    if(!already_calling() || !strcasecmp(called_nick, target_array[prefix+1])){
+        end_call();
+        return OK;
+    }
+
     end_call();
 
+    interfaceText(NULL, "Llamada cancelada.", ERROR_TEXT, MAIN_THREAD);
     sprintf(message, "%s :PCANCEL", target_array[prefix+1]);
 
     if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
