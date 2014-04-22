@@ -12,9 +12,10 @@
 #include <netinet/in.h>
 #include <inttypes.h>
 #include <linux/tcp.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
- #include "G-1301-03-P1-thread_handling.h"
+#include "G-1301-03-P1-thread_handling.h"
 #include "G-1301-03-P1-connection.h"
 #include "G-1301-03-P1-types.h"
 
@@ -278,3 +279,19 @@ int set_queue_length(int socket, int length) {
     return listen(socket, length);
 }
 
+
+/*Gets the ip*/
+int get_own_ip(int socket, char *ip){
+
+    struct sockaddr_in sin;
+    socklen_t len = sizeof(sin);
+
+    if (getsockname(socket, (struct sockaddr *)&sin, &len) == -1){
+        syslog(LOG_ERR, "%s", strerror(errno));
+        return ERROR;
+    }
+
+    sprintf(ip, "%s", inet_ntoa(sin.sin_addr));
+
+    return OK;
+}

@@ -11,21 +11,31 @@
 #include "G-1301-03-P2-chat_funcs.h"
 #include "G-1301-03-P2-client_utility_functions.h"
 
-/*Global extern variables*/
-extern int sfd;
-extern int connected;
-extern int in_channel;
-extern int server_called;
-extern int queried;
-extern int port;
-extern char nick[BUFFER];
-extern char client_channel[BUFFER];
-extern char client_server[BUFFER];
-extern int readers_num;
-extern int readers;
-extern int writer;
-extern int mutex_access;
-extern int mutex_rvariables;
+/*Chat global variables*/
+extern int sfd;                      /*Socket decriptor*/
+extern int connected;                /*Connected flag*/
+extern int in_channel;               /*Joined to a channel flag*/
+extern int server_called;            /*Server command has been written*/
+extern int queried;                  /*In a queried window*/
+extern int port;                     /*Port number*/
+extern char nick[BUFFER];            /*Nickname*/
+extern char client_channel[BUFFER];  /*Channel name*/
+extern char client_server[BUFFER];   /*Server name*/
+
+/*Sound global variables*/
+extern char called_nick[BUFFER];     /*Nick of the user who has been called*/
+extern char incoming_nick[BUFFER];   /*Nick of the user who has called*/
+extern char my_calling_ip[BUFFER];   /*My ip for calling*/
+extern char their_calling_ip[BUFFER];/*Their ip for calling*/
+extern u_int16_t their_calling_port; /*Their port for calling*/
+
+/*Semaphores variables*/
+extern int readers_num;              /*Number of readers*/
+extern int readers;                  /*Semaphore*/
+extern int writer;                   /*Semaphore*/
+extern int mutex_access;             /*Semaphore*/
+extern int mutex_rvariables;         /*Semaphore*/
+
 
 /**
  * @brief Sends a request to connect a client to a server using gtk fields.

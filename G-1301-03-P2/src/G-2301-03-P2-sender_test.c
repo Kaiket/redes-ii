@@ -45,7 +45,7 @@ int main (int argc, char *argv[]) {
     memset((void*)caller_params, 0, sizeof(struct sockaddr_in));
     caller_params->sin_addr.s_addr=c_ip;
     caller_params->sin_port=htons(atol(argv[2]));
-    printf("Calling to port %u in ip %s\n", atol(argv[2]), argv[1]);
+    printf("Calling to port %lu in ip %s\n", atol(argv[2]), argv[1]);
     caller_params->sin_family=AF_INET;
     
     srand(time(NULL));

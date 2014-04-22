@@ -108,4 +108,17 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
  */
 int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *arg));
 
+
+/**
+ * @brief Gets the ip assoiated to a socket descriptor.
+ * @details The local ip is stored at ip pointer with the format
+ * x.x.x.x where x is a number between 0 and 255.
+ * 
+ * @param socket from where get the ip
+ * @param ip objetive to copy the ip
+ * 
+ * @return OK or ERROR depending on the returned value of getsockname
+ */
+int get_own_ip(int socket, char *ip);
+
 #endif

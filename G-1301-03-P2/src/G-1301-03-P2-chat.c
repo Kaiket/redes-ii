@@ -66,15 +66,23 @@ GtkTextIter iter;
 GtkTextBuffer *buffer;
 GtkWidget *topicB, *externB, *secretB, *guestB, *privateB, *moderatedB;
 
+/*Chat global variables*/
 int sfd;                      /*Socket decriptor*/
 int connected;                /*Connected flag*/
 int in_channel;               /*Joined to a channel flag*/
 int server_called;            /*Server command has been written*/
 int queried;                  /*In a queried window*/
+int port;                     /*Port number*/
 char nick[BUFFER];            /*Nickname*/
 char client_channel[BUFFER];  /*Channel name*/
 char client_server[BUFFER];   /*Server name*/
-int port;                     /*Port number*/
+
+/*Sound global variables*/
+char called_nick[BUFFER];     /*Nick of the user who has been called*/
+char incoming_nick[BUFFER];   /*Nick of the user who has called*/
+char my_calling_ip[BUFFER];   /*My ip for calling*/
+char their_calling_ip[BUFFER];/*Their ip for calling*/
+u_int16_t their_calling_port; /*Their port for calling*/
 
 /*Semaphores variables*/
 int readers_num;              /*Number of readers*/
@@ -496,6 +504,7 @@ int main(int argc, char**argv)
   port = 0;
   server_called = 0;
   readers_num = 0;
+  their_calling_port = 0;
 
   if ((readers = semaphore_new()) == ERROR){
     syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));
