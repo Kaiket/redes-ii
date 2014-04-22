@@ -92,7 +92,7 @@ typedef struct __attribute__ ((__packed__)) struct_rtp{
  *
  * @see call(), end_call()
  */
-u_int16_t setup_call(u_int16_t port, long int timeout);
+long setup_call(u_int16_t port, long int timeout);
 
 /** 
  * @brief Makes a call to an IP and port

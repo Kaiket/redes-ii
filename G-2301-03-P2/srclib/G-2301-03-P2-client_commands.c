@@ -629,7 +629,7 @@ void command_exit_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
 int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
 	char message[BUFFER];
-    u_int16_t my_calling_port;
+    long my_calling_port;
 
     /*Checking parameters*/
 	if(n_strings-prefix != 2){
@@ -668,7 +668,7 @@ int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
 	strcpy(called_nick, target_array[prefix+1]);
 
     /*Message*/
-	sprintf(message, "%s :%s %s %d", called_nick, PCALL_CMD_STR, my_calling_ip, my_calling_port);
+	sprintf(message, "%s :%s %s %ld", called_nick, PCALL_CMD_STR, my_calling_ip, my_calling_port);
 	if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
 		interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
         semaphore_aw(writer, readers);
@@ -684,7 +684,7 @@ int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
 int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
     int rcall;
-    u_int16_t my_calling_port;
+    long my_calling_port;
     char message[BUFFER];
 
     /*Checking parameters*/
@@ -732,7 +732,7 @@ int command_paccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
     strcpy(called_nick, target_array[prefix+1]);
 
     /*En el sprintf realmente va la IP*/
-    sprintf(message, "%s :%s %s %d", called_nick, PACCEPT_CMD_STR, my_calling_ip, my_calling_port);
+    sprintf(message, "%s :%s %s %ld", called_nick, PACCEPT_CMD_STR, my_calling_ip, my_calling_port);
     if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
         interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
         end_call();
@@ -780,7 +780,7 @@ int command_pclose_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_s
 
     end_call();
 
-    interfaceText(NULL, "Llamada cancelada.", ERROR_TEXT, MAIN_THREAD);
+    interfaceText(NULL, "Llamada cancelada.", MSG_TEXT, MAIN_THREAD);
     sprintf(message, "%s :%s", target_array[prefix+1], PCLOSE_CMD_STR);
 
     if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
@@ -850,8 +850,13 @@ void command_paccept_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
         return;
     }
 
+
     semaphore_bw(writer, readers);
-    strcpy(called_nick, recv_nick);
+
+    if(strcmp(called_nick, recv_nick)){
+        semaphore_aw(writer, readers);
+        return;
+    }
 
     strcpy(their_calling_ip, ip);
     ip = strstr(their_calling_ip, " ");

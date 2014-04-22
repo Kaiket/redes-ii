@@ -26,8 +26,8 @@ pthread_t receiver_thread=0;
  * Sets a timeout for the socket if the corresponding argument is > 0
  * Returns port number or several types of error
  */
-u_int16_t setup_call(u_int16_t port, long int timeout) {
-    u_int16_t port_bound=0;
+long setup_call(u_int16_t port, long int timeout) {
+    long port_bound=0;
     
     if (calling) {
         syslog(LOG_ERR, "Client: ERROR Already calling.");
