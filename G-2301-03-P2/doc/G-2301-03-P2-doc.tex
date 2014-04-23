@@ -121,5 +121,10 @@ Una vez recibidos los datos, se identifica el comando/mensaje recibido y se real
 
 \section{Ampliación multimedia del cliente}
 Se compone la cabecera RTP a partir de dos funciones, rtp$\_$header$\_$setup que fija una serie de parametros que van a ser fijos durante toda la conexion y rtp$\_$header$\_$build que se llama para completar la cabecera con los parámetros que varían para cada paquete (timestamp y numero de secuencia).
+Se han creado una serie de funciones que realizan una configuracion de la llamada.
+Primero tenemos setup$\_$call que crea un socket e inicializa un timeout para dicho socket.
+La funcion call() recibe una ip y un socket y comienza a grabar/enviar y recibir/reproducir los paquetes de audio que llegan de dicha ip y socket mediante dos hilos que se lanzan en el momento de establecer la llamada.
+Tal como manda el protocolo RTP, se comprueban el SSRC y se ignoran paquetes cuyo numero de secuencia es inferior al ultimo reproducido o cuyo formato sea diferente al acordado.
+Para terminar la llamada se llama a end$\_$call() que cierra los  hilos y libera los recursos dejando las variables listas para  un nuevo setup$\_$call.
 
 \end{document}

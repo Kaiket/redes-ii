@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include <errno.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -10,6 +12,7 @@
 #include "G-2301-03-P1-semaphores.h"
 #include "G-2301-03-P2-chat_funcs.h"
 #include "G-2301-03-P2-client_utility_functions.h"
+#include "G-2301-03-P3-SSL_funcs.h"
 
 /*Chat global variables*/
 extern int sfd;                      /*Socket decriptor*/
@@ -35,6 +38,9 @@ extern int readers;                  /*Semaphore*/
 extern int writer;                   /*Semaphore*/
 extern int mutex_access;             /*Semaphore*/
 extern int mutex_rvariables;         /*Semaphore*/
+
+/*SSL*/
+extern SSL* ssl;
 
 
 /**
@@ -108,7 +114,7 @@ void connectClient(void){
     	interfaceErrorWindow(message, MAIN_THREAD);
     	syslog(LOG_ERR, "Failed while connecting to %s: %s", client_server, strerror(errno));
     	interfaceText(NULL, "Error de conexión", ERROR_TEXT, MAIN_THREAD);
-    	close(sfd);
+    	cerrar_canal_SSL(ssl);
         semaphore_ar(&readers_num, writer, mutex_rvariables);
     	return;
     }

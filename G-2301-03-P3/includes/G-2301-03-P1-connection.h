@@ -1,6 +1,9 @@
 #ifndef __CONNECTION_H
 #define __CONNECTION_H
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 #define PORT_LEN 6
 /**
  * @file G-2301-03-P1-connection.h
@@ -103,10 +106,10 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
  * @param host_name name/ip of the host.
  * @param port port to which connect.
  * 
- * @return On success connect_to_server returns the file descriptor of the created socket.
- * On failure, it returns ERROR (which is defined in G-2301-03-P1-types.h).
+ * @return On success connect_to_server returns the SSL pointer.
+ * On failure, it returns NULL.
  */
-int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *arg));
+SSL *connect_to_server(char *host_name, int port, void* (*thread_routine) (void *arg));
 
 
 /**

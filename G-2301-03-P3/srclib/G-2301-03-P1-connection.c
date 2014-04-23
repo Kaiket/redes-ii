@@ -15,9 +15,13 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include "G-2301-03-P1-thread_handling.h"
 #include "G-2301-03-P1-connection.h"
 #include "G-2301-03-P1-types.h"
+#include "G-2301-03-P2-chat.h"
+#include "G-2301-03-P3-SSL_funcs.h"
 
 /*Opens a TCP socket*/
 int open_TCP_socket();
@@ -200,11 +204,13 @@ int receive_msg(int socket, void **data, size_t segmentsize, void* enddata, size
  * Implementation comments:
  *      It uses the host name and the port to create a socket and connect to a server.
  */
-int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *arg)){
+SSL *connect_to_server(char *host_name, int port, void* (*thread_routine) (void *arg)){
 
     int sfd;
     char service[PORT_LEN];
     struct addrinfo hints, *result, *rp;
+    SSL_CTX* ctx=NULL;
+    SSL *ssl;
 
     /*Hints initialization*/
     bzero(&hints, sizeof(struct addrinfo));
@@ -219,9 +225,8 @@ int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *
 
     sprintf(service, "%d", port);
     if(getaddrinfo(host_name, service, &hints, &result) != 0){
-        return ERROR;
+        return NULL;
     }
-
 
     for (rp = result; rp != NULL; rp = rp->ai_next) {
         
@@ -231,11 +236,25 @@ int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *
 
             if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1){
                 freeaddrinfo(result);
+
+                if (!(ctx=fijar_contexto_SSL("../cert/CCASignedCert.pem", "../cert/CACert.pem", &SSLv23_method, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT))) {
+                    syslog(LOG_ERR, "ERROR al fijar contexto\n");
+                    close(sfd);
+                    return NULL;
+                }
+                
+                if (!(ssl=conectar_canal_seguro_SSL(ctx, sfd))) {
+                    syslog(LOG_ERR, "ERROR al conectar canal seguro\n");
+                    close(sfd);
+                    return NULL;
+                }
+
                 if(launch_thread(sfd, thread_routine) == ERROR){
                     close(sfd);
-                    return ERROR;
+                    return NULL;
                 }
-                return sfd;
+
+                return ssl;
             }
 
             close(sfd);
@@ -245,7 +264,7 @@ int connect_to_server(char *host_name, int port, void* (*thread_routine) (void *
 
     freeaddrinfo(result);
 
-    return ERROR;
+    return NULL;
 
 
 }

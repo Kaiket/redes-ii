@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include <unistd.h>
 #include "G-2301-03-P1-types.h"
 #include "G-2301-03-P1-connection.h"
@@ -12,6 +14,7 @@
 #include "G-2301-03-P2-chat_funcs.h"
 #include "G-2301-03-P2-client_utility_functions.h"
 #include "G-2301-03-P2-client_commands.h"
+#include "G-2301-03-P3-SSL_funcs.h"
 
 /*Chat global variables*/
 extern int sfd;                      /*Socket decriptor*/
@@ -38,6 +41,9 @@ extern int writer;                   /*Semaphore*/
 extern int mutex_access;             /*Semaphore*/
 extern int mutex_rvariables;         /*Semaphore*/
 
+/*SSL*/
+extern SSL* ssl;
+
 
 void *client_thread_listener(void *arg){
 
@@ -46,7 +52,7 @@ void *client_thread_listener(void *arg){
     void *data;
 
     /*Receiving data*/
-	while ((received = receive_msg(sfd, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
+	while ((received = recibir_datos_SSL(ssl, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
 
         /*Spliting messages up*/
         command = strtok_r(data, IRC_MSG_END, &save_ptr);
@@ -79,7 +85,8 @@ void *client_thread_listener(void *arg){
     /*Received has failed.*/
     semaphore_bw(writer, readers);
     connected = 0;
-    close(sfd);
+    cerrar_canal_SSL(ssl);
+    ERR_free_strings();
     semaphore_aw(writer, readers);
 
     pthread_exit(NULL);
@@ -438,9 +445,11 @@ void client_cmd_parsing(char *string, int type){
 
 int client_connect_to_server(char* server_url, int port, void* (*thread_routine) (void *arg)){
 
-	if((sfd = connect_to_server(server_url, port, thread_routine)) == ERROR){
+	if((ssl = connect_to_server(server_url, port, thread_routine)) == NULL){
     	return ERROR;
     }
+
+    sfd = SSL_get_fd(ssl);
 
     interfaceText(NULL, "Conectado, esperando respuesta...", MSG_TEXT, MAIN_THREAD);
 	return OK;
@@ -472,11 +481,11 @@ int client_send_irc_command(char *command, char *parameters){
 
     if(!parameters){
         sprintf(message, "%s\r\n", command);
-        return send_msg(sfd, (void *) message, strlen(message)+1, IRC_MSG_LENGTH);
+        return enviar_datos_SSL(ssl, (void *) message, strlen(message)+1, IRC_MSG_LENGTH);
     }
 
 	sprintf(message, "%s %s\r\n", command, parameters);
-	return send_msg(sfd, (void *) message, strlen(command)+strlen(parameters)+3, IRC_MSG_LENGTH);
+	return enviar_datos_SSL(ssl, (void *) message, strlen(command)+strlen(parameters)+3, IRC_MSG_LENGTH);
 
 }
 

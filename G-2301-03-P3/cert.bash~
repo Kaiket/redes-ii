@@ -1,4 +1,4 @@
-#!/bin/bash
+#!bin/bash
 #CA CERT
 echo "Generating CACert"
 openssl genrsa -out rootkey.pem 2048

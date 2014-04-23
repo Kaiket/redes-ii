@@ -54,10 +54,14 @@
 #include <syslog.h>
 #include <errno.h>
 #include <string.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include "G-2301-03-P1-semaphores.h"
 #include "G-2301-03-P1-types.h"
 #include "G-2301-03-P2-chat.h"
 #include "G-2301-03-P2-chat_funcs.h"
+#include "G-2301-03-P3-SSL_funcs.h"
+
 
 /* Variables globales */
 GtkWidget *window;
@@ -90,6 +94,9 @@ int readers;                  /*Semaphore*/
 int writer;                   /*Semaphore*/
 int mutex_access;             /*Semaphore*/
 int mutex_rvariables;         /*Semaphore*/
+
+/*SSL*/
+SSL* ssl;                     /*SSL*/
 
 
 gboolean toggleButtonState(GtkToggleButton *togglebutton){return gtk_toggle_button_get_active(togglebutton);}
@@ -485,7 +492,8 @@ gboolean ordered_exit (GtkWidget *widget, GdkEvent *event, gpointer user_data){
   semaphore_rm(writer);
   semaphore_rm(mutex_access);
   semaphore_rm(mutex_rvariables);
-  close(sfd);
+  cerrar_canal_SSL(ssl);
+  ERR_free_strings();
 
   return FALSE;
 
@@ -505,6 +513,10 @@ int main(int argc, char**argv)
   server_called = 0;
   readers_num = 0;
   their_calling_port = 0;
+  ssl = NULL;
+
+  /*Inicializacion SSL*/
+  inicializar_nivel_SSL();
 
   if ((readers = semaphore_new()) == ERROR){
     syslog(LOG_ERR, "Failed while creating a new semaphore: %s\n", strerror(errno));

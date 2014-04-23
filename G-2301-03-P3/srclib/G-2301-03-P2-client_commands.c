@@ -3,6 +3,8 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include "G-2301-03-P1-types.h"
 #include "G-2301-03-P1-semaphores.h"
 #include "G-2301-03-P2-chat.h"
@@ -11,6 +13,7 @@
 #include "G-2301-03-P2-client_commands.h"
 #include "G-2301-03-P2-call_funcs.h"
 #include "G-2301-03-P1-connection.h"
+#include "G-2301-03-P3-SSL_funcs.h"
 
 /*Chat global variables*/
 extern int sfd;                      /*Socket decriptor*/
@@ -36,6 +39,9 @@ extern int readers;                  /*Semaphore*/
 extern int writer;                   /*Semaphore*/
 extern int mutex_access;             /*Semaphore*/
 extern int mutex_rvariables;         /*Semaphore*/
+
+/*SSL*/
+extern SSL* ssl;
 
 
 void command_join_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
@@ -410,7 +416,7 @@ void command_error_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     queried = 0;
     connected = 0;
     interfaceText(NULL, "Ha sido desconectado.", MSG_TEXT, !MAIN_THREAD);
-    close(sfd);
+    cerrar_canal_SSL(ssl);
     semaphore_aw(writer, readers);
 
 }
@@ -617,7 +623,8 @@ void command_exit_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
         semaphore_rm(writer);
         semaphore_rm(mutex_access);
         semaphore_rm(mutex_rvariables);
-        close(sfd);
+        
+        cerrar_canal_SSL(ssl);
         exit(EXIT_SUCCESS);
     }
     else{
