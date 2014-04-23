@@ -39,7 +39,11 @@ BINARIES = $(patsubst $(OBJ_DIR)/%.o,$(BIN_DIR)/%,$(OBJ))
 # Targets 
 
 all: $(BINARIES)
-	@echo "Compilando..."
+	@echo
+
+IRC-SERVER: $(BIN_DIR)/$(PREFIXX)P1-main
+	
+IRC-CLIENT: $(BIN_DIR)/$(PREFIXX)P2-chat
 
 $(BINARIES): $(LIB_CON) $(LIB_IRC) $(LIB_AUD) $(OBJ) 
 	$(CC) $(CFLAGS) $(patsubst $(BIN_DIR)/%,$(OBJ_DIR)/%.o,$@) -o $@ $(LIB_IRC) $(LIB_AUD) $(LIB_CON) $(LLIBS)

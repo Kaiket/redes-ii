@@ -1,0 +1,116 @@
+\documentclass{mathnotes}
+\usepackage{mathnotes}
+\usepackage{listings}
+
+\newcommand{\theauthor}{Enrique Cabrerizo Fernández\and Guillermo Ruiz Álvarez}
+\newcommand{\thetitle}{Memoria Práctica 2\\Redes de comunicaciones II}
+
+\title{\thetitle}
+\author{\theauthor}
+\date{Curso 2013 - 2014\\Universidad Autónoma de Madrid}
+
+\begin{document}
+
+\section{Introducción y descripción}
+En este documento se detalla el proceso de implementación de un cliente  \href{http://es.wikipedia.org/wiki/Internet_Relay_Chat}{IRC} a partir del código proporcionado de una interfaz \href{http://www.gtk.org/}{GTK}. Para la elaboración del cliente se han seguido las directrices especificadas en el \href{https://tools.ietf.org/html/rfc2812}{RFC 2812}.
+
+La interfaz gráfica de usuario se compone de varias partes. En primer lugar, el usuario puede introducir sus datos de conexión en los campos de texto y conectarse y desconectarse de un servidor utilizando los botones de conexión y desconexión. En segundo lugar, el usuario puede utilizar el campo de introducción de texto principal para enviar comandos al servidor y mensajes a los usuarios conectados en dicho servidor. Finalmente, el usuario puede utilizar los \textit{checkboxes} para modificar los modos de un canal en el que tenga privilegios.
+
+Toda la información recibida aparecerá en la pantalla principal del la interfaz.
+
+\section{Organización de directorios y ficheros.}
+En lo que respecta a la organización de los ficheros, se han añadido nuevos directorios modificando ligeramente la estructura:
+
+El directorio raíz, cuyo nombre es \texttt{G-2301-03-P2} contiene los siguientes directorios:
+
+\begin{itemize}
+\item \textbf{bin} contiene los ejecutables creados despues de la compilación y el enlazado.
+
+\item \textbf{doc} contiene la documentación del proyecto en formato PDF.
+
+\item \textbf{includes} contiene los ficheros de cabecera generados para la elaboración de librerias y el programa principal.
+
+\item \textbf{lib} contiene las librerias generadas para realizar los programas principales.
+
+\item \textbf{man} contiene los manuales\footnote{Estos manuales han sido generados con doxydoc de doxygen} de las funciones de las librerías. Para acceder a ellos basta ejecutarlos con el programa \texttt{man}.
+
+\item \textbf{obj} contiene los ficheros objeto generados en la compilación.
+
+\item \textbf{src} contiene los ficheros fuente que generarán un ejecutable. Estos son programas de prueba (tests) o los programas principales.
+
+\item \textbf{srclib} contiene los ficheros fuente que generarán los objetos de las librerías.
+\end{itemize}
+
+En el directorio raíz se encuentran el fichero Makefile necesario para la compilación y enlazado de los archivos además del fichero de configuración de Doxygen.
+
+\section{Makefile}
+Para compilar y enlazar se proporciona un fichero Makefile a ejecutar con el programa \texttt{make}. En esta práctica se han añadido directivas que se presentan a continuación.
+
+\subsection{Directivas}
+Las directivas proporcionadas son las siguientes:
+
+\begin{itemize}
+\item \textbf{all} genera todos los binarios en el directorio bin\footnote{incluyendo los ficheros objeto necesarios para ello en el directorio obj y las librerias en el directorio lib}. Estos ficheros son:
+
+\subitem G-2301-03-P1-main
+\subitem G-2301-03-P2-chat
+
+y todos los binarios creados para realizar tests.
+
+\item \textbf{IRC-SERVER} crea el ejecutable del servidor de la primera práctica en el directorio bin.
+
+\item \textbf{IRC-CLIENT} crea el ejecutable del cliente de la segunda práctica en el directorio bin.
+
+\item \textbf{bin/*} donde * es el nombre de un ejecutable. En este caso se compilará todo lo necesario para compilar y enlazar para la obtención del ejecutable.
+
+\item \textbf{obj/*.o} donde * es el nombre de un objeto. En este caso se compilará lo necesario para compilar el objeto.
+
+\item \textbf{compress}, \textbf{pack}, \textbf{tar}, \textbf{tgz}. Cualquiera de estas directivas ejecutan el comando clean y comprimen la práctica a un fichero tgz que será colocado en el directorio padre del raíz de la práctica.
+
+\item \textbf{clean}, \textbf{clear}. Cualquiera de estas directivas eliminan el fichero tgz, los objeto y los ejecutables.
+
+\item\textbf{G-2301-03-P2-*.a} genera la librería \texttt{G-2301-03-P2-*.a}.
+las librerias creadas son
+
+\subitem G-2301-03-P2-libconnection.a
+\subitem G-2301-03-P2-libirc.a
+\subitem G-2301-03-P2-libaudio.a
+\end{itemize}
+
+\subsection{Construcción del Makefile}
+El archivo Makefile (los comandos utilizados son de \href{https://www.gnu.org/software/make/manual/make.html#Top}{GNU Make}) se ha realizado siguiendo las siguientes reglas, de forma que puede ser utilizado por cualquier usuario que siga las mismas:
+\begin{itemize}
+\item Seguir la organización de directorios especificada.
+\item No existen ficheros de cabecera para los ficheros fuente de src.
+\item Todos los ficheros de srclib tienen un fichero de cabecera asociado.
+\end{itemize}
+Para cambiar el nombre de los directorios o añadir ficheros de cabecera extra, basta con modificar las macros al incio del fichero Makefile.
+
+\section{Funciones de librería}
+En esta práctica se ha ampliado el número de librerías ofreciendo tres librerías diferenciadas según la utilidad de las mismas:
+
+\begin{itemize}
+\item \textbf{G-2301-03-P2-libconnection.a} ofrece todas las funciones necesarias de conexión, incluyendo el manejo de hilos, la daemonización y el uso de semáforos.
+
+\item \textbf{G-2301-03-P2-libirc.a} ofrece todas las funciones necesarias relacionadas con IRC. Incluyendo funciones de cliente y servidor.
+
+\item \textbf{G-2301-03-P2-libaudio.a} ofrece todas las funciones necesarias relacionadas con las llamadas y el manejo de audio.
+\end{itemize}
+
+La descripción precisa de todas estas funciones se encuentra en la páginas de manual (\texttt{man pages}) realizadas por los autores en el directorio correspondiente.
+
+\section{Estructura, funcionalidad y pruebas del cliente}
+
+El cliente implementado parte de la implementación de la interfaz gráfica en el fichero \textbf{G-2301-P2-chat.c}. Todos los eventos de dicha interfaz producen la ejecución de las funciones implementadas en \textbf{G-2301-P2-chat$\_$funcs.c}. Se ha añadido un módulo auxiliar llamado \textbf{G-2301-P2-client$\_$utility$\_$functions.c} donde se implementa el hilo principal que recibe datos del servidor y las funciones necesarias para el envío de comandos y tratamiento de los datos recibidos.
+
+El proceso y estructura de la implementación de la conexión, desconexión y el envío y recibo de comandos se describe a continuación.
+
+\subsection{Conexión y desconexión}
+Cuando el usuario desee conectarse a un servidor IRC es \textbf{necesario} que rellene la totalidad de los campos de información de usuario (Apodo, Nombre, Nombre real, Servidor\footnote{Puede utilizarse tanto la IP con la URL del servidor de chat.}). En el caso de que el campo de puerto se deje vacío o se escriba IRC se utilizará el puerto predeterminado de IRC 6667. En el momento en el que se pulsa el botón de conexión se ejecuta una función implementada en \textbf{G-2301-P2-chat$\_$funcs.c} que se encarga de manejar el evento. Dicha función realiza llamada a una función del fichero \textbf{G-2301-P2-client$\_$utility$\_$functions.c} que se encarga de realizar las acciones necesarias para establecer una conexión con el servidor.
+
+En el caso de la desconexión, el evento se captura y se manda una petición de desconexión al servidor. Una vez recibida la respuesta, el cliente se desconecta.
+
+\section{Ampliación multimedia del cliente}
+Se compone la cabecera RTP a partir de dos funciones, rtp_header_setup que fija una serie de parametros que van a ser fijos durante toda la conexion y rtp_header_build que se llama para completar la cabecera con los parámetros que varían para cada paquete (timestamp y numero de secuencia).
+
+\end{document}

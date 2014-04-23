@@ -79,6 +79,7 @@ void *client_thread_listener(void *arg){
     /*Received has failed.*/
     semaphore_bw(writer, readers);
     connected = 0;
+    close(sfd);
     semaphore_aw(writer, readers);
 
     pthread_exit(NULL);

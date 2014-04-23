@@ -410,6 +410,7 @@ void command_error_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     queried = 0;
     connected = 0;
     interfaceText(NULL, "Ha sido desconectado.", MSG_TEXT, !MAIN_THREAD);
+    close(sfd);
     semaphore_aw(writer, readers);
 
 }
