@@ -387,21 +387,21 @@ void client_cmd_parsing(char *string, int type){
 
             else if(!strcasecmp(command, PCALL_CMD_STR)){
                 if(command_pcall_out((char **) target_array, prefix, n_strings) == ERROR){
-                    interfaceText(NULL, "PCALL: uso incorrecto", ERROR_TEXT, MAIN_THREAD);
+                    interfaceText(NULL, "Uso: /PCALL nick", ERROR_TEXT, MAIN_THREAD);
                 }
                 break;
             }
 
             else if(!strcasecmp(command, PACCEPT_CMD_STR)){
                 if(command_paccept_out((char **) target_array, prefix, n_strings) == ERROR){
-                    interfaceText(NULL, "PACCEPT: uso incorrecto", ERROR_TEXT, MAIN_THREAD);
+                    interfaceText(NULL, "Uso: /PACCEPT nick", ERROR_TEXT, MAIN_THREAD);
                 }
                 break;
             }
 
             else if(!strcasecmp(command, PCLOSE_CMD_STR)){
                 if(command_pclose_out((char **) target_array, prefix, n_strings) == ERROR){
-                    interfaceText(NULL, "PCLOSE: uso incorrecto", ERROR_TEXT, MAIN_THREAD);
+                    interfaceText(NULL, "Uso: /PCLOSE nick", ERROR_TEXT, MAIN_THREAD);
                 }
                 break;
             }
