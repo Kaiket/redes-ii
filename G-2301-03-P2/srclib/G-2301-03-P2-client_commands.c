@@ -851,7 +851,6 @@ void command_paccept_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
         return;
     }
 
-
     semaphore_bw(writer, readers);
 
     if(strcmp(called_nick, recv_nick)){
