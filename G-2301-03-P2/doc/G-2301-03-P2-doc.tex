@@ -115,9 +115,11 @@ Para el envío de datos se distingue si la cadena introducida es un comando o un
 Tras ello, una función de \textbf{G-2301-P2-client$\_$utility$\_$functions.c} envía el mensaje o identifica el comando introducido. En el caso de que el texto introducido sea un comando se realizará una llamada a una función de \textbf{G-2301-P2-client$\_$commands.c} que realizará las operaciones necesarias para el correcto envío del comando. Entre estas operaciones se encuentra la modificación de parámetros de entorno para mantener el estado del programa.
 
 \subsection{Recepción de comandos y mensajes}
-AL igual que en el envío de los datos, para la recepción de los mismos, tras conectar con un servidor, se lanza un hilo que se encarga de
+Al igual que en el envío de los datos, para la recepción de los mismos, tras conectar con un servidor, se lanza un hilo que se encarga de recibir toda la información a través del socket de conexión con dicho servidor.
+
+Una vez recibidos los datos, se identifica el comando/mensaje recibido y se realiza una llamada a una función implementada en \textbf{G-2301-P2-client$\_$commands.c}, que se encarga de mostrar el mensaje, su significado o en su caso, modificar los parámetros de entorno necesarios.
 
 \section{Ampliación multimedia del cliente}
-Se compone la cabecera RTP a partir de dos funciones, rtp_header_setup que fija una serie de parametros que van a ser fijos durante toda la conexion y rtp_header_build que se llama para completar la cabecera con los parámetros que varían para cada paquete (timestamp y numero de secuencia).
+Se compone la cabecera RTP a partir de dos funciones, rtp$\_$header$\_$setup que fija una serie de parametros que van a ser fijos durante toda la conexion y rtp$\_$header$\_$build que se llama para completar la cabecera con los parámetros que varían para cada paquete (timestamp y numero de secuencia).
 
 \end{document}
