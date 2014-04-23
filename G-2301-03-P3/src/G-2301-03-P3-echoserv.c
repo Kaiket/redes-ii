@@ -32,7 +32,7 @@ int main (int argc, char *argv[]) {
     while (salir==0) {
         client_socket = accept_connections(fd);
         ctx=NULL;
-        if (!(ctx=fijar_contexto_SSL(argv[1], argv[2], &SSLv23_method))) {
+        if (!(ctx=fijar_contexto_SSL(argv[1], argv[2], &SSLv23_method, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT))) {
             printf("ERROR al fijar contexto\n");
             continue;
         }

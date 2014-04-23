@@ -55,7 +55,7 @@ int main (int argc, char *argv[]) {
     }
     
     inicializar_nivel_SSL();
-    if (!(ctx=fijar_contexto_SSL(argv[1], argv[2], &SSLv23_method ))) {
+    if (!(ctx=fijar_contexto_SSL(argv[1], argv[2], &SSLv23_method, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT))) {
         printf("ERROR al fijar contexto\n");
         return -1;
     }

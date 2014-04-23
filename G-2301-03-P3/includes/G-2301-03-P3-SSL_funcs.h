@@ -19,7 +19,7 @@
 #define ERROR_VERIFY -11 /*peer couldn't be verified*/
 
 void inicializar_nivel_SSL();
-SSL_CTX* fijar_contexto_SSL(char* mycert, char* CAcert, const SSL_METHOD* (*method)(void));
+SSL_CTX* fijar_contexto_SSL(char* mycert, char* CAcert, const SSL_METHOD* (*method)(void), int verify_mode);
 SSL* conectar_canal_seguro_SSL (SSL_CTX* ctx, int socket);
 SSL* aceptar_canal_seguro_SSL (SSL_CTX* ctx, int socket);
 int evaluar_post_conectar_SSL(SSL* ssl);

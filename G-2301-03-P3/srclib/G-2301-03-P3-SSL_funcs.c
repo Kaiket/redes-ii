@@ -25,7 +25,7 @@ void inicializar_nivel_SSL() {
 }
 
 
-SSL_CTX* fijar_contexto_SSL(char* mycert, char* CAcert, const SSL_METHOD* (*method)(void)) {
+SSL_CTX* fijar_contexto_SSL(char* mycert, char* CAcert, const SSL_METHOD* (*method)(void), int verify_mode) {
     SSL_CTX *ctx=NULL;
     /*creating ctx*/
     ctx = SSL_CTX_new(method());
@@ -60,7 +60,7 @@ SSL_CTX* fijar_contexto_SSL(char* mycert, char* CAcert, const SSL_METHOD* (*meth
         errno=ERROR_PRKEYFILE;
         return NULL;
     }
-    SSL_CTX_set_verify(ctx , SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+    SSL_CTX_set_verify(ctx , verify_mode, NULL);
 
     return ctx;
 }
