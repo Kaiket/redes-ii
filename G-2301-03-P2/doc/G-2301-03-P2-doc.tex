@@ -103,12 +103,19 @@ La descripción precisa de todas estas funciones se encuentra en la páginas de 
 
 El cliente implementado parte de la implementación de la interfaz gráfica en el fichero \textbf{G-2301-P2-chat.c}. Todos los eventos de dicha interfaz producen la ejecución de las funciones implementadas en \textbf{G-2301-P2-chat$\_$funcs.c}. Se ha añadido un módulo auxiliar llamado \textbf{G-2301-P2-client$\_$utility$\_$functions.c} donde se implementa el hilo principal que recibe datos del servidor y las funciones necesarias para el envío de comandos y tratamiento de los datos recibidos.
 
-El proceso y estructura de la implementación de la conexión, desconexión y el envío y recibo de comandos se describe a continuación.
+El proceso y estructura de la implementación de la conexión, desconexión y el envío y recepción de comandos se describe a continuación.
 
 \subsection{Conexión y desconexión}
 Cuando el usuario desee conectarse a un servidor IRC es \textbf{necesario} que rellene la totalidad de los campos de información de usuario (Apodo, Nombre, Nombre real, Servidor\footnote{Puede utilizarse tanto la IP con la URL del servidor de chat.}). En el caso de que el campo de puerto se deje vacío o se escriba IRC se utilizará el puerto predeterminado de IRC 6667. En el momento en el que se pulsa el botón de conexión se ejecuta una función implementada en \textbf{G-2301-P2-chat$\_$funcs.c} que se encarga de manejar el evento. Dicha función realiza llamada a una función del fichero \textbf{G-2301-P2-client$\_$utility$\_$functions.c} que se encarga de realizar las acciones necesarias para establecer una conexión con el servidor.
 
 En el caso de la desconexión, el evento se captura y se manda una petición de desconexión al servidor. Una vez recibida la respuesta, el cliente se desconecta.
+
+\subsection{Envío de comandos y mensajes}
+Para el envío de datos se distingue si la cadena introducida es un comando o un mensaje.
+Tras ello, una función de \textbf{G-2301-P2-client$\_$utility$\_$functions.c} envía el mensaje o identifica el comando introducido. En el caso de que el texto introducido sea un comando se realizará una llamada a una función de \textbf{G-2301-P2-client$\_$commands.c} que realizará las operaciones necesarias para el correcto envío del comando. Entre estas operaciones se encuentra la modificación de parámetros de entorno para mantener el estado del programa.
+
+\subsection{Recepción de comandos y mensajes}
+AL igual que en el envío de los datos, para la recepción de los mismos, tras conectar con un servidor, se lanza un hilo que se encarga de
 
 \section{Ampliación multimedia del cliente}
 Se compone la cabecera RTP a partir de dos funciones, rtp_header_setup que fija una serie de parametros que van a ser fijos durante toda la conexion y rtp_header_build que se llama para completar la cabecera con los parámetros que varían para cada paquete (timestamp y numero de secuencia).
