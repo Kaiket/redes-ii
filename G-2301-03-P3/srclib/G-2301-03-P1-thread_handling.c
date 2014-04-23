@@ -65,6 +65,7 @@ int launch_thread(int client_sock, void* (*thread_routine) (void *arg)) {
     
     thread_array[array_first_free].active=1;
     thread_array[array_first_free].socket=client_sock;
+    thread_array[array_first_free].ssl=NULL;
     
     if (pthread_create(&thread, NULL, thread_routine, ((void *) &thread_array[array_first_free])) < 0) {
         syslog(LOG_ERR, "Could not create a thread to handle connection in socket %d", client_sock);

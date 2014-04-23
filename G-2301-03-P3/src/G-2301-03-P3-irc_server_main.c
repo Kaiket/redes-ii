@@ -6,8 +6,9 @@
 #include "G-2301-03-P1-types.h"
 #include "G-2301-03-P1-connection.h"
 #include "G-2301-03-P1-thread_handling.h"
-#include "G-2301-03-P1-ircserver.h"
+#include "G-2301-03-P3-ircserver.h"
 #include "G-2301-03-P1-daemonize.h"
+#include "G-2301-03-P3-SSL_funcs.h"
 
 int main(int argc, char **argv) {
 
@@ -35,6 +36,9 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
+    /*Initialize SSL*/
+    inicializar_nivel_SSL();
+    
     /*Initializes IRC server data*/
     irc_server_data_init();
     

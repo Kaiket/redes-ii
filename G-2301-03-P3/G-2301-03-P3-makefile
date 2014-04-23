@@ -26,11 +26,11 @@ HEADER_ALL_LIB = $(HEADER_DIR)/G-2301-03-P1-irc_errors.h
 
 PREFIXX = G-2301-03-
 OBJ_CON = $(OBJ_DIR)/$(PREFIXX)P1-connection.o $(OBJ_DIR)/$(PREFIXX)P1-daemonize.o $(OBJ_DIR)/$(PREFIXX)P1-parser.o $(OBJ_DIR)/$(PREFIXX)P1-semaphores.o $(OBJ_DIR)/$(PREFIXX)P1-thread_handling.o $(OBJ_DIR)/$(PREFIXX)P3-SSL_funcs.o
-OBJ_IRC = $(OBJ_DIR)/$(PREFIXX)P1-ircserver.o $(OBJ_DIR)/$(PREFIXX)P1-irc_utility_functions.o $(OBJ_DIR)/$(PREFIXX)P2-chat_funcs.o $(OBJ_DIR)/$(PREFIXX)P2-client_commands.o $(OBJ_DIR)/$(PREFIXX)P2-client_utility_functions.o
+OBJ_IRC = $(OBJ_DIR)/$(PREFIXX)P3-ircserver.o $(OBJ_DIR)/$(PREFIXX)P1-irc_utility_functions.o $(OBJ_DIR)/$(PREFIXX)P2-chat_funcs.o $(OBJ_DIR)/$(PREFIXX)P2-client_commands.o $(OBJ_DIR)/$(PREFIXX)P2-client_utility_functions.o
 OBJ_AUD = $(OBJ_DIR)/$(PREFIXX)P2-call_funcs.o $(OBJ_DIR)/$(PREFIXX)P2-sound.o $(OBJ_DIR)/$(PREFIXX)P2-udp.o
 
-DIR_NAME = ../G-2301-03-P2
-TGZ_NAME = ../G-2301-03-P2.tgz
+DIR_NAME = ../G-2301-03-P3
+TGZ_NAME = ../G-2301-03-P3.tgz
 LIB_CON = $(LIB_DIR)/G-2301-03-P2-libconnection.a
 LIB_IRC = $(LIB_DIR)/G-2301-03-P2-libirc.a
 LIB_AUD = $(LIB_DIR)/G-2301-03-P2-libaudio.a

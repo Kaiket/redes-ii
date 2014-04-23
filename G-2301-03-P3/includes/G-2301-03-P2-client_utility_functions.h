@@ -1,7 +1,7 @@
 #ifndef __CLIENT_UTILITY_FUNCTIONS_H
 #define __CLIENT_UTILITY_FUNCTIONS_H
 
-#include "G-2301-03-P1-ircserver.h"
+#include "G-2301-03-P3-ircserver.h"
 
 /**
  * @file G-2301-03-P2-client_utility_functions.h

@@ -4,6 +4,8 @@
 #include <limits.h>
 #include "uthash.h"
 #include "utlist.h"
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 /*server info*/
 #define SERVER_NAME "irc_server_V1.0"
@@ -107,6 +109,7 @@ typedef struct ch {
  */
 typedef struct {
     int socket;
+    SSL* ssl;
     char nick[IRC_MAX_NICK_LENGTH + 1]; /*maximum nick length + \0*/
     char* user_name;
     char* host_name;

@@ -2,7 +2,7 @@
 #include <string.h>
 #include <syslog.h>
 #include "G-2301-03-P1-types.h"
-#include "G-2301-03-P1-ircserver.h"
+#include "G-2301-03-P3-ircserver.h"
 #include "uthash.h"
 #include "utlist.h"
 

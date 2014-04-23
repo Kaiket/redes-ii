@@ -1,11 +1,12 @@
 #include "G-2301-03-P1-types.h"
 #include "G-2301-03-P1-thread_handling.h"
-#include "G-2301-03-P1-ircserver.h"
+#include "G-2301-03-P3-ircserver.h"
 #include "G-2301-03-P1-connection.h"
 #include "G-2301-03-P1-irc_errors.h"
 #include "G-2301-03-P1-irc_utility_functions.h"
 #include "G-2301-03-P1-parser.h"
 #include "G-2301-03-P1-semaphores.h"
+#include "G-2301-03-P3-SSL_funcs.h"
 #include "uthash.h"
 #include "utlist.h"
 #include <stdio.h>
@@ -14,6 +15,11 @@
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+#define CACERT "../cert/CACert.pem"
+#define MYCERT "../cert/SCASignedCert.pem"
 
 enum {
     PING,
@@ -83,15 +89,38 @@ void *irc_thread_routine(void *arg) {
     user *my_user=NULL;
     channel_lst *elt;
     channel *chan;
+    SSL_CTX* ctx=NULL;
+    SSL* ssl=NULL;
     
     syslog(LOG_NOTICE, "Server: New thread created for socket %d\n", settings->socket);
 
+    /*******************SSL*****************/
+    syslog(LOG_NOTICE, "Configuring SSL\n");
+    if (!(ctx=fijar_contexto_SSL(MYCERT, CACERT, &SSLv3_server_method, SSL_VERIFY_PEER))) {
+        syslog(LOG_NOTICE,"ERROR fixing context\n");
+        pthread_exit(NULL);
+    }
+    if (!(ssl=aceptar_canal_seguro_SSL(ctx, settings->socket))) {
+        SSL_CTX_free(ctx);
+        syslog(LOG_NOTICE,"ERROR accepting secure channel, check certs\n");
+        pthread_exit(NULL);
+    }
+    settings->ssl=ssl;
+    if (evaluar_post_conectar_SSL(ssl)!=OK) {
+        syslog(LOG_NOTICE,"ERROR peer cert not valid\n");
+        cerrar_canal_SSL(ssl);
+        pthread_exit(NULL);
+    }
+    /******************SSL******************/    
+    
     if (!(my_user=(user*)malloc(sizeof(user)))) {
-        send_msg(settings->socket, "Server is full", strlen("Server is full"), IRC_MSG_LENGTH);
+        enviar_datos_SSL(settings->ssl, "Server is full", strlen("Server is full"), IRC_MSG_LENGTH);
         syslog(LOG_NOTICE, "Server: Terminating thread for socket %d due to malloc error while creating user struct\n", settings->socket);
+        cerrar_canal_SSL(my_user->ssl);
         pthread_exit(NULL);
     }
     my_user->socket=settings->socket;
+    my_user->ssl=ssl;
     strcpy(my_user->nick, "");
     my_user->user_name=NULL;
     my_user->host_name=NULL;
@@ -101,7 +130,7 @@ void *irc_thread_routine(void *arg) {
     my_user->channels_llist=NULL;
     my_user->already_in_server=0;
 
-    while ((received = receive_msg(settings->socket, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
+    while ((received = recibir_datos_SSL(settings->ssl, &data, IRC_MSG_LENGTH, IRC_MSG_END, strlen(IRC_MSG_END))) > 0) {
 
         command = strtok_r(data, IRC_MSG_END, &save_ptr);
         if (command != NULL){
@@ -152,6 +181,7 @@ void *irc_thread_routine(void *arg) {
             }
         }
     }
+    cerrar_canal_SSL(my_user->ssl);
     free_user(my_user);
     semaphore_aw(server_data.writer, server_data.readers);
     
@@ -401,7 +431,7 @@ int irc_send_numeric_response(user* client, int numeric_response, char* details)
         return ERROR;
     }
 
-    if (send_msg(client->socket, ascii_response, strlen(ascii_response), IRC_MSG_LENGTH) <= 0) {
+    if (enviar_datos_SSL(client->ssl, ascii_response, strlen(ascii_response), IRC_MSG_LENGTH) <= 0) {
         free(ascii_response);
         return ERROR;
     }
@@ -418,12 +448,12 @@ int send_msg_to_channel(channel* chan, char* msg) {
     /*notification to every user in channel*/
     LL_FOREACH(chan->users_llist, elt) {
         if ((user_in_channel=user_hasht_find(elt->nick))) {
-            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+            enviar_datos_SSL(user_in_channel->ssl, msg, strlen(msg), IRC_MSG_LENGTH);
         }
     }
     LL_FOREACH(chan->operators_llist, elt) {
         if ((user_in_channel=user_hasht_find(elt->nick))) {
-            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+            enviar_datos_SSL(user_in_channel->ssl, msg, strlen(msg), IRC_MSG_LENGTH);
         }
     }
     return OK;
@@ -437,12 +467,12 @@ int send_msg_to_channel_except(user* client, channel* chan, char* msg) {
     /*notification to every user in channel*/
     LL_FOREACH(chan->users_llist, elt) {
         if ((user_in_channel=user_hasht_find(elt->nick)) && strcmp(elt->nick, client->nick)) {
-            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+            enviar_datos_SSL(user_in_channel->ssl, msg, strlen(msg), IRC_MSG_LENGTH);
         }
     }
     LL_FOREACH(chan->operators_llist, elt) {
         if ((user_in_channel=user_hasht_find(elt->nick)) && strcmp(elt->nick, client->nick)) {
-            send_msg(user_in_channel->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+            enviar_datos_SSL(user_in_channel->ssl, msg, strlen(msg), IRC_MSG_LENGTH);
         }
     }
     return OK;
@@ -467,7 +497,7 @@ int irc_ping_cmd(user* client, char *command){
     strcpy(response, "PONG ");
     strcat(response, SERVER_NAME);
     strcat(response, IRC_MSG_END);
-    if(send_msg(client->socket, response, strlen(response), IRC_MSG_LENGTH) <= 0){
+    if(enviar_datos_SSL(client->ssl, response, strlen(response), IRC_MSG_LENGTH) <= 0){
         return ERROR;
     }
     return OK;
@@ -713,7 +743,7 @@ int irc_mode_cmd (user* client, char* command) {
                 return ERROR;
             }
             sprintf(msg, ":%s MODE %s :%s%s", client->nick, client->nick, user_mode_str, IRC_MSG_END);
-            send_msg(client->socket, msg, strlen(msg), IRC_MSG_LENGTH);
+            enviar_datos_SSL(client->ssl, msg, strlen(msg), IRC_MSG_LENGTH);
             free(user_mode_str);
             free(msg);
         }
@@ -843,7 +873,7 @@ int irc_nick_cmd (user* client, char* command) {
         user_hasht_remove(client);
         strncpy(client->nick, new_nick, strlen(new_nick)+1);
         user_hasht_add(client);
-        send_msg(client->socket, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
+        enviar_datos_SSL(client->ssl, success_msg, strlen(success_msg), IRC_MSG_LENGTH);
     }    
     
     semaphore_aw(server_data.writer, server_data.readers);
@@ -985,9 +1015,9 @@ int irc_quit_cmd (user* client, char* command) {
                 }
             }
         }
-        send_msg(client->socket, "ERROR :Closing link", strlen("ERROR :Closing link"), IRC_MSG_LENGTH);
+        enviar_datos_SSL(client->ssl, "ERROR :Closing link", strlen("ERROR :Closing link"), IRC_MSG_LENGTH);
     }
-    close_connection(client->socket);
+    cerrar_canal_SSL(client->ssl);
     free_user(client);
     free(msg);
     semaphore_aw(server_data.writer, server_data.readers);
@@ -1022,7 +1052,7 @@ int send_privmsg_to_user (user *origin, user *target, char* msg) {
             return ERROR;
         }
         sprintf(full_reply, ":%s PRIVMSG %s %s%s", origin->nick, target->nick, msg, IRC_MSG_END);
-        if (send_msg(target->socket, full_reply, strlen(full_reply), IRC_MSG_LENGTH) == ERROR) {
+        if (enviar_datos_SSL(target->ssl, full_reply, strlen(full_reply), IRC_MSG_LENGTH) == ERROR) {
             free(full_reply);
             return ERROR;
         }
@@ -1311,7 +1341,7 @@ int create_channel(user* client,char* chname) {
         return ERROR;
     }
     sprintf(full_reply, ":%s JOIN %s%s", client->nick, new->name, IRC_MSG_END);
-    send_msg(client->socket, full_reply, strlen(full_reply), IRC_MSG_LENGTH);
+    enviar_datos_SSL(client->ssl, full_reply, strlen(full_reply), IRC_MSG_LENGTH);
     free(full_reply);
     /*introducing user in channel*/
     if (add_chname_to_llist(new->name, &(client->channels_llist))!=OK) return ERROR;
@@ -1939,7 +1969,7 @@ int irc_invite_cmd (user* client, char* command) {
  	   sprintf(msg_to_user, "%s %s", target_us->nick, target_ch->name);
    	   sprintf(msg_to_targ, ":%s INVITE %s :%s%s", client->nick, target_us->nick, target_ch->name, IRC_MSG_END);
    	   irc_send_numeric_response(client, RPL_INVITING, msg_to_user);
-   	   send_msg(target_us->socket, msg_to_targ, strlen(msg_to_targ), IRC_MSG_LENGTH);
+   	   enviar_datos_SSL(target_us->ssl, msg_to_targ, strlen(msg_to_targ), IRC_MSG_LENGTH);
       	}
     }
     semaphore_aw(server_data.writer, server_data.readers);
