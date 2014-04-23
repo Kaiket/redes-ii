@@ -169,6 +169,9 @@ void irc_server_data_init();
  */
 void *irc_thread_routine(void *arg);
 
+/*
+ * Functions for freeing allocated memory
+ */
 void free_channel(channel* ch);
 void free_user(user* us);
 void irc_server_data_free();
@@ -214,6 +217,9 @@ int irc_split_cmd(char *cmd, char **target_array, int *prefix, int *n_strings);
  */
 int irc_get_cmd_position(char* cmd);
 
+/*
+ * Functions for management.
+ */
 void *irc_thread_routine(void *arg);
 void irc_exit_message();
 int irc_split_cmd(char *cmd, char *target_array[MAX_CMD_ARGS + 2], int *prefix, int *n_strings);

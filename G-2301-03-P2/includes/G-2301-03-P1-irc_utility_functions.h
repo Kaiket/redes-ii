@@ -3,6 +3,9 @@
 
 #include "G-2301-03-P1-ircserver.h"
 
+/*
+ * These functions return the  user mode.
+ */
 int user_mode_a(char flags);
 int user_mode_i(char flags);
 int user_mode_w(char flags);
@@ -12,6 +15,9 @@ int user_mode_O(char flags);
 int user_mode_s(char flags);
 int user_registered(char flags);
 
+/*
+ * These functions return the channel mode.
+ */
 int chan_mode_O(unsigned int flags);
 int chan_mode_o(unsigned int flags);
 int chan_mode_v(unsigned int flags);
@@ -30,6 +36,9 @@ int chan_mode_b(unsigned int flags);
 int chan_mode_e(unsigned int flags);
 int chan_mode_I(unsigned int flags);
 
+/*
+ * Auxiliar functions for getting information.
+ */
 int is_letter_char(char c);
 int is_special_char(char c);
 int is_digit_char(char c);
@@ -43,6 +52,10 @@ char user_mode_from_str (char* str, char* unk, char* oper);
 char* chan_mode_string (unsigned int modes);
 unsigned int chan_mode_from_str(char* str, char* unk, char* oper);
 
+
+/*
+ * Functions for managing hash tables
+ */
 void user_hasht_add(user *item);
 void user_hasht_remove(user *item);
 user* user_hasht_find(char key[IRC_MAX_NICK_LENGTH + 1]);
@@ -50,6 +63,9 @@ void channel_hasht_add(channel *item);
 void channel_hasht_remove(channel *item);
 channel* channel_hasht_find(char *key);
 
+/*
+ * Functions for managing lists
+ */
 int add_nick_to_llist(char nick[IRC_MAX_NICK_LENGTH + 1], active_nicks** llist);
 int remove_nick_from_llist(char nick[IRC_MAX_NICK_LENGTH + 1], active_nicks** llist);
 active_nicks* find_nick_in_llist(char nick [IRC_MAX_NICK_LENGTH + 1], active_nicks** llist);

@@ -4,6 +4,12 @@
 #include "G-2301-03-P1-ircserver.h"
 
 /**
+ * @file G-2301-03-P2-client_utility_functions.h
+ * @details Functios for client management.
+ * @author Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.*/
+
+/**
  * @brief Thread function.
  * @details It receives data through a socket and takes the proper action
  * depending on the message that receives.

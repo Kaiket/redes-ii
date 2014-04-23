@@ -1,6 +1,12 @@
 #ifndef __CALL_FUNCS_H
 #define __CALL_FUNCS_H
 
+/**
+ * @file G-2301-03-P2-call_funcs.h
+ * @details Functions for management of calls and sound.
+ * @author Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.*/
+
 #include <sys/types.h>
 
 #ifndef OK
@@ -25,7 +31,7 @@
 
 
 /*
- * Estructura para la cabecera RTP.
+ * RTP Header structure.
  */
 
 /*
