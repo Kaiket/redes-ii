@@ -46,14 +46,21 @@ extern SSL* ssl;
 
 void command_join_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
+    int colon  = 0;
     char *exclam;
     char message[BUFFER], recv_nick[BUFFER];
 
-	semaphore_bw(writer, readers);
+    semaphore_bw(writer, readers);
 
     if (n_strings-prefix == 2){
+
+        /*Checking for colon*/
+        if(*(target_array[prefix+1]) == ":"){
+            colon = sizeof(char);
+        }
+
         /*Parameter must be a channel*/
-        if(prefix && (*(target_array[prefix+1]+sizeof(char)) == '#' || *(target_array[prefix+1]+sizeof(char)) == '&')){
+        if(prefix && (*(target_array[prefix+1]+colon) == '#' || *(target_array[prefix+1]+colon) == '&')){
             strcpy(recv_nick, target_array[0]+sizeof(char));
             /*Getting user*/
             exclam = strchr(recv_nick, (int) '!');
@@ -65,22 +72,23 @@ void command_join_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
             }
             if(exclam){
                 *exclam = '\0';
-                strcpy(client_channel, target_array[prefix+1]+sizeof(char));
-                /*Checking user*/
-                if(!strcasecmp(recv_nick, nick)){
-                    sprintf(message, "Has entrado en el canal %s.", client_channel);
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
-                    in_channel = 1;
-                    queried = 0;
-                    if(client_send_irc_command("WHO", client_channel) == ERROR){
-                        interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
-                    }
-                }
-                else{
-                    sprintf(message, "%s ha entrado en el canal %s.", recv_nick, client_channel);
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            }
+            strcpy(client_channel, target_array[prefix+1]+colon);
+            /*Checking user*/
+            if(!strcasecmp(recv_nick, nick)){
+                sprintf(message, "Has entrado en el canal %s.", client_channel);
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                in_channel = 1;
+                queried = 0;
+                if(client_send_irc_command("WHO", client_channel) == ERROR){
+                    interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
                 }
             }
+            else{
+                sprintf(message, "%s ha entrado en el canal %s.", recv_nick, client_channel);
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            }
+            
         }
     }
 
@@ -90,12 +98,12 @@ void command_join_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
 
 void command_nick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
-	char *exclam;
+    char *exclam;
     char message[BUFFER], recv_nick[BUFFER];
 
-	semaphore_bw(writer, readers);
+    semaphore_bw(writer, readers);
 
-	if (n_strings-prefix == 2){
+    if (n_strings-prefix == 2){
         if(prefix){
             strcpy(recv_nick, target_array[0]+sizeof(char));
             /*Getting user*/
@@ -108,17 +116,17 @@ void command_nick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
             }
             if(exclam){
                 *exclam = '\0';
-                /*Checking user*/
-                if(!strcasecmp(recv_nick, nick)){
-                    strcpy(nick, target_array[prefix+1]+sizeof(char));
-                    sprintf(message, "Tu nick ha cambiado a %s.", nick);
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
-                }
-                else{
-                    strcpy(nick, target_array[prefix+1]+sizeof(char));
-                    sprintf(message, "%s ha cambiado su nick a %s.", recv_nick, target_array[n_strings-1]+sizeof(char));
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
-                }
+            }
+            /*Checking user*/
+            if(!strcasecmp(recv_nick, nick)){
+                strcpy(nick, target_array[prefix+1]+sizeof(char));
+                sprintf(message, "Tu nick ha cambiado a %s.", nick);
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            }
+            else{
+                strcpy(nick, target_array[prefix+1]+sizeof(char));
+                sprintf(message, "%s ha cambiado su nick a %s.", recv_nick, target_array[n_strings-1]+sizeof(char));
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
             }
         }
     }
@@ -128,10 +136,10 @@ void command_nick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
 
 void command_part_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
-	char *exclam;
+    char *exclam;
     char message[BUFFER], recv_nick[BUFFER], more_info[BUFFER];
 
-	semaphore_bw(writer, readers);
+    semaphore_bw(writer, readers);
 
     if (n_strings-prefix >= 2){
         if(prefix && (*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&')){
@@ -146,32 +154,32 @@ void command_part_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
             }
             if(exclam){
                 *exclam = '\0';
-                strcpy(more_info, target_array[prefix+1]);
-                /*Checking user*/
-                if(!strcasecmp(recv_nick, nick)){
-                    /*Checking parameters*/
-                    if(n_strings-prefix > 2){
-                        if(target_array[prefix+2]+sizeof(char)){
-                            sprintf(message, "Has salido del canal %s. (%s).", more_info, target_array[prefix+2]+sizeof(char));
-                        }
+            }
+            strcpy(more_info, target_array[prefix+1]);
+            /*Checking user*/
+            if(!strcasecmp(recv_nick, nick)){
+                /*Checking parameters*/
+                if(n_strings-prefix > 2){
+                    if(target_array[prefix+2]+sizeof(char)){
+                        sprintf(message, "Has salido del canal %s. (%s).", more_info, target_array[prefix+2]+sizeof(char));
                     }
-                    else{
-                        sprintf(message, "Has salido del canal %s.", more_info);
-                    }
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
                 }
                 else{
-                    /*Checking parameters*/
-                    if(n_strings-prefix > 2){
-                        if(target_array[prefix+2]+sizeof(char)){
-                            sprintf(message, "%s ha abandonado el canal (%s)", recv_nick, target_array[prefix+1]+sizeof(char));
-                        }
-                    }
-                    else{
-                        sprintf(message, "%s ha abandonado el canal.", recv_nick);
-                    }
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                    sprintf(message, "Has salido del canal %s.", more_info);
                 }
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            }
+            else{
+                /*Checking parameters*/
+                if(n_strings-prefix > 2){
+                    if(target_array[prefix+2]+sizeof(char)){
+                        sprintf(message, "%s ha abandonado el canal (%s)", recv_nick, target_array[prefix+1]+sizeof(char));
+                    }
+                }
+                else{
+                    sprintf(message, "%s ha abandonado el canal.", recv_nick);
+                }
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
             }
         }
     }
@@ -181,10 +189,10 @@ void command_part_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
 
 void command_kick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
-	char *exclam;
+    char *exclam;
     char message[BUFFER], recv_nick[BUFFER], more_info[BUFFER];
 
-	semaphore_bw(writer, readers);
+    semaphore_bw(writer, readers);
 
     if (n_strings-prefix >= 2){
         if(prefix && (*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&')){
@@ -199,31 +207,31 @@ void command_kick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
             }
             if(exclam){
                 *exclam = '\0';
-                strcpy(more_info, target_array[prefix+1]);
-                /*You have kicked someone*/
-                if(!strcasecmp(recv_nick, nick)){
-                    if(!strcasecmp(target_array[prefix+2], nick)){
-                        sprintf(message, "Te has expulsado a ti mismo del canal %s", more_info);
-                        queried = 0;
-                        in_channel = 0;
-                    }
-                    else{
-                        sprintf(message, "Has expulsado a %s del canal %s", target_array[prefix+2], more_info);
-                        queried = 0;
-                        in_channel = 0;
-                    }
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            }
+            strcpy(more_info, target_array[prefix+1]);
+            /*You have kicked someone*/
+            if(!strcasecmp(recv_nick, nick)){
+                if(!strcasecmp(target_array[prefix+2], nick)){
+                    sprintf(message, "Te has expulsado a ti mismo del canal %s", more_info);
+                    queried = 0;
+                    in_channel = 0;
                 }
-                /*Someone has kick some other*/
                 else{
-                    if(!strcasecmp(target_array[prefix+2], nick)){
-                        sprintf(message, "%s te ha expulsado del canal %s", recv_nick, more_info);
-                    }
-                    else{
-                        sprintf(message, "%s ha expulsado a %s del canal %s", recv_nick, target_array[prefix+2], more_info);
-                    }
-                    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+                    sprintf(message, "Has expulsado a %s del canal %s", target_array[prefix+2], more_info);
+                    queried = 0;
+                    in_channel = 0;
                 }
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            }
+            /*Someone has kick some other*/
+            else{
+                if(!strcasecmp(target_array[prefix+2], nick)){
+                    sprintf(message, "%s te ha expulsado del canal %s", recv_nick, more_info);
+                }
+                else{
+                    sprintf(message, "%s ha expulsado a %s del canal %s", recv_nick, target_array[prefix+2], more_info);
+                }
+                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
             }
         }
     }
@@ -233,11 +241,11 @@ void command_kick_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
 
 
 void command_quit_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
-	
-	char *exclam;
+    
+    char *exclam;
     char message[BUFFER], recv_nick[BUFFER];
 
-	if (n_strings-prefix >= 2){
+    if (n_strings-prefix >= 2){
         if(prefix){
             strcpy(recv_nick, target_array[0]+sizeof(char));
             exclam = strchr(recv_nick, (int) '!');
@@ -250,15 +258,15 @@ void command_quit_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
             }
             if(exclam){
                 *exclam = '\0';
-                /*Checking parameters*/
-                if(target_array[prefix+1]+sizeof(char)){
-                    sprintf(message, "%s ha abandonado el canal (%s)", recv_nick, target_array[prefix+1]+sizeof(char));
-                }
-                else{
-                    sprintf(message, "%s ha abandonado el canal.", recv_nick);
-                }
-                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
             }
+            /*Checking parameters*/
+            if(target_array[prefix+1]+sizeof(char)){
+                sprintf(message, "%s ha abandonado el canal (%s)", recv_nick, target_array[prefix+1]+sizeof(char));
+            }
+            else{
+                sprintf(message, "%s ha abandonado el canal.", recv_nick);
+            }
+            interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
         }
     }
 }
@@ -266,7 +274,7 @@ void command_quit_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
 
 void command_privmsg_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
-	char *exclam;
+    char *exclam;
     char message[BUFFER], recv_nick[BUFFER];
 
     if (n_strings-prefix == 3){
@@ -282,25 +290,26 @@ void command_privmsg_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
             }
             if(exclam){
                 *exclam = '\0';
-                strcpy(message, target_array[prefix+2]+sizeof(char));
-                if(*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&'){
-                    interfaceText(recv_nick, message, PUBLIC_TEXT, !MAIN_THREAD);
+            }
+            strcpy(message, target_array[prefix+2]+sizeof(char));
+            if(*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&'){
+                interfaceText(recv_nick, message, PUBLIC_TEXT, !MAIN_THREAD);
+            }
+            else{
+                if(!strncasecmp(message, PCALL_CMD_STR, strlen(PCALL_CMD_STR))){
+                    command_pcall_in((char **) target_array, prefix, n_strings, recv_nick);
+                }
+                else if(!strncasecmp(message, PACCEPT_CMD_STR, strlen(PACCEPT_CMD_STR))){
+                    command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
+                }
+                else if(!strncasecmp(message, PCLOSE_CMD_STR, strlen(PCLOSE_CMD_STR))){
+                    command_pclose_in((char **) target_array, prefix, n_strings, recv_nick);
                 }
                 else{
-                    if(!strncasecmp(message, PCALL_CMD_STR, strlen(PCALL_CMD_STR))){
-                        command_pcall_in((char **) target_array, prefix, n_strings, recv_nick);
-                    }
-                    else if(!strncasecmp(message, PACCEPT_CMD_STR, strlen(PACCEPT_CMD_STR))){
-                        command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
-                    }
-                    else if(!strncasecmp(message, PCLOSE_CMD_STR, strlen(PCLOSE_CMD_STR))){
-                        command_pclose_in((char **) target_array, prefix, n_strings, recv_nick);
-                    }
-                    else{
-                        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
-                    }
+                    interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
                 }
             }
+            
         }
     }
 }
@@ -308,10 +317,10 @@ void command_privmsg_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
 
 void command_invite_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
-	char *exclam;
+    char *exclam;
     char message[BUFFER], recv_nick[BUFFER];
 
-	if (n_strings-prefix == 3){
+    if (n_strings-prefix == 3){
         if(prefix && (*(target_array[n_strings-1]+sizeof(char)) == '#' || *(target_array[n_strings-1]+sizeof(char)) == '&')){
             strcpy(recv_nick, target_array[0]+sizeof(char));
             /*Getting user*/
@@ -324,14 +333,15 @@ void command_invite_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_s
             }
             if(exclam){
                 *exclam = '\0';
-                if(!strcasecmp(target_array[n_strings-2], nick)){
-                    sprintf(message, "Has sido invitado por %s al canal %s.", recv_nick, target_array[n_strings-1]+sizeof(char));
-                }
-                else{
-                    sprintf(message, "%s ha sido invitado al canal %s por %s.", target_array[n_strings-2], target_array[n_strings-1]+sizeof(char), recv_nick);
-                }
-                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
             }
+            if(!strcasecmp(target_array[n_strings-2], nick)){
+                sprintf(message, "Has sido invitado por %s al canal %s.", recv_nick, target_array[n_strings-1]+sizeof(char));
+            }
+            else{
+                sprintf(message, "%s ha sido invitado al canal %s por %s.", target_array[n_strings-2], target_array[n_strings-1]+sizeof(char), recv_nick);
+            }
+            interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            
         }
     }
 }
@@ -340,7 +350,7 @@ void command_ping_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
 
     char message[BUFFER];
 
-	if(n_strings-prefix == 2){
+    if(n_strings-prefix == 2){
         strcpy(message, target_array[prefix+1]);
         if(client_send_irc_command("PONG", message) == ERROR){
             interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
@@ -350,10 +360,10 @@ void command_ping_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
 
 void command_mode_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
-	char *exclam;
+    char *exclam;
     char message[BUFFER], recv_nick[BUFFER];
 
-	/*Channel mode changed*/
+    /*Channel mode changed*/
     if(n_strings-prefix == 3){
         if(prefix && (*(target_array[prefix+1]) == '#' || *(target_array[prefix+1]) == '&')){
             strcpy(recv_nick, target_array[0]+sizeof(char));
@@ -368,14 +378,15 @@ void command_mode_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
             
             if(exclam){
                 *exclam = '\0';
-                if(!strcasecmp(recv_nick, nick)){
-                    sprintf(message, "Has cambiado el modo del canal %s a %s.", target_array[prefix+1], target_array[prefix+2]);
-                }
-                else{
-                    sprintf(message, "%s ha cambiado el modo del canal %s a %s.", recv_nick, target_array[prefix+1], target_array[prefix+2]);
-                }
-                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
             }
+            if(!strcasecmp(recv_nick, nick)){
+                sprintf(message, "Has cambiado el modo del canal %s a %s.", target_array[prefix+1], target_array[prefix+2]);
+            }
+            else{
+                sprintf(message, "%s ha cambiado el modo del canal %s a %s.", recv_nick, target_array[prefix+1], target_array[prefix+2]);
+            }
+            interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            
         }
     }
     /*User mode in channel changed*/
@@ -392,14 +403,15 @@ void command_mode_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
             }
             if(exclam){
                 *exclam = '\0';
-                if(!strcasecmp(recv_nick, nick)){
-                    sprintf(message, "Has cambiado el modo en el canal %s de %s a %s.", target_array[prefix+1], target_array[prefix+3], target_array[prefix+2]);
-                }
-                else{
-                    sprintf(message, "%s ha cambiado el modo en el canal %s de %s a %s.", recv_nick, target_array[prefix+1], target_array[prefix+3], target_array[prefix+2]);
-                }
-                interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
             }
+            if(!strcasecmp(recv_nick, nick)){
+                sprintf(message, "Has cambiado el modo en el canal %s de %s a %s.", target_array[prefix+1], target_array[prefix+3], target_array[prefix+2]);
+            }
+            else{
+                sprintf(message, "%s ha cambiado el modo en el canal %s de %s a %s.", recv_nick, target_array[prefix+1], target_array[prefix+3], target_array[prefix+2]);
+            }
+            interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+            
         }
     }
     else{

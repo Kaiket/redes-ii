@@ -126,7 +126,7 @@ int client_receive_data_management(char *data){
 
     /*Message from server*/
     /*Welcome*/
-    if(!strcmp(command, RPL_WELCOME_STR)){
+    if(!strcmp(command, RPL_WELCOME_STR) || !strcmp(command, "1")){
         semaphore_bw(writer, readers);
         strcpy(nick, target_array[n_strings-2]);
         interfaceText(NULL, target_array[n_strings-1], MSG_TEXT, !MAIN_THREAD);
