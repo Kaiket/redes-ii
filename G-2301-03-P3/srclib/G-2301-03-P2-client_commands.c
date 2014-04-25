@@ -14,6 +14,7 @@
 #include "G-2301-03-P2-call_funcs.h"
 #include "G-2301-03-P1-connection.h"
 #include "G-2301-03-P3-SSL_funcs.h"
+#include "G-2301-03-P3-SSL_ftransfer.h"
 
 /*Chat global variables*/
 extern int sfd;                      /*Socket decriptor*/
@@ -1001,7 +1002,7 @@ int command_fsend_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     }
 
     /*Getting port*/
-    my_sending_port = transfer(my_sending_ip, 0, SENDER_SIZE, target_array[prefix+2], file_size);
+    my_sending_port = transfer(my_sending_ip, 0, SENDER_SIDE, target_array[prefix+2], file_size);
     if(my_sending_port == ERROR_ALREADY_TRANSFERING){
         interfaceText(NULL, "Debe terminarse el envío actual.", ERROR_TEXT, MAIN_THREAD);
         semaphore_aw(writer, readers);
