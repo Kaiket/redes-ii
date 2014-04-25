@@ -1,0 +1,193 @@
+.TH "includes/G-2301-03-P2-client_utility_functions.h" 3 "Fri Apr 25 2014" "Version 2.0" "IRC" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-2301-03-P2-client_utility_functions.h \- 
+.SH SYNOPSIS
+.br
+.PP
+\fC#include 'G-2301-03-P1-ircserver\&.h'\fP
+.br
+
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "void * \fBclient_thread_listener\fP (void *arg)"
+.br
+.RI "\fIThread function\&. \fP"
+.ti -1c
+.RI "int \fBclient_receive_data_management\fP (char *data)"
+.br
+.RI "\fIManages data received by client_thread_listener\&. \fP"
+.ti -1c
+.RI "void \fBclient_print_full_mesage\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fIPrints a full message on the interface\&. \fP"
+.ti -1c
+.RI "void \fBclient_cmd_parsing\fP (char *string, int type)"
+.br
+.RI "\fIManage data received by the user\&. \fP"
+.ti -1c
+.RI "int \fBclient_connect_to_server\fP (char *server_url, int port, void *(*thread_routine)(void *arg))"
+.br
+.RI "\fISends a request to connect to a server using information provided by the user\&. \fP"
+.ti -1c
+.RI "int \fBclient_new_session\fP (char *nick, char *name, char *real_name, char *server_url)"
+.br
+.RI "\fIInitialize a new session with the server\&. \fP"
+.ti -1c
+.RI "int \fBclient_send_irc_command\fP (char *command, char *parameters)"
+.br
+.RI "\fISend's a command to a server\&. \fP"
+.ti -1c
+.RI "int \fBclient_check_full_connection\fP ()"
+.br
+.RI "\fICheck if the client is full connected\&. \fP"
+.in -1c
+.SH "Detailed Description"
+.PP 
+Functios for client management\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "int client_check_full_connection ()"
+
+.PP
+Check if the client is full connected\&. Here, full connected means that it is connected to a server and joined to a channel\&.
+.PP
+\fBReturns:\fP
+.RS 4
+FALSE if the checking results not successful\&. TRUE if it does\&. 
+.RE
+.PP
+
+.SS "void client_cmd_parsing (char *string, inttype)"
+
+.PP
+Manage data received by the user\&. The data may be a command or a message\&. If it is a command, it may be an user command or a standard command\&. In case that it is an user command, the proper action is taken\&. If it is a server command, it is sent to the server\&. If it is a plain message it is sent after check some conditions: the user must be connected to a server and must be in a channel\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIstring\fP received data 
+.br
+\fItype\fP of data, it may be a command (IRC_CMD) or a message (IRC_MSG)\&. 
+.RE
+.PP
+
+.SS "int client_connect_to_server (char *server_url, intport, void *(*)(void *arg)thread_routine)"
+
+.PP
+Sends a request to connect to a server using information provided by the user\&. It needs the server's url and port where to connect and a pointer to the thread thas is going to be executed as a result of the connection, usually to receive data\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIserver_url\fP server's ip or url 
+.br
+\fIport\fP name of the service or port number 
+.br
+\fIthread_routine\fP pointer to a thread to be executed\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+OK or ERROR depending on the connection result\&. 
+.RE
+.PP
+
+.SS "int client_new_session (char *nick, char *name, char *real_name, char *server_url)"
+
+.PP
+Initialize a new session with the server\&. The calling process/thread must be connected to an irc server\&. This function sends the information needed to stablish a new session with the irc server\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fInick\fP Nick of the IRC user 
+.br
+\fIname\fP Name of the IRC user 
+.br
+\fIreal_name\fP Real name of the IRC user\&. 
+.br
+\fIserver_url\fP Server's ip or url\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+OK or ERROR depending on the session result\&. 
+.RE
+.PP
+
+.SS "void client_print_full_mesage (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Prints a full message on the interface\&. The message is printed as it is received, without any change\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array of strings that compound the message\&. 
+.br
+\fIprefix\fP indicates wether the message has a prefix or not\&. 
+.br
+\fIn_strings\fP number of elements in target_array 
+.RE
+.PP
+
+.SS "int client_receive_data_management (char *data)"
+
+.PP
+Manages data received by client_thread_listener\&. Identifies the command/message received and takes the proper action depeding on it\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIdata\fP received by client_thread_listener function\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+OK / ERROR\&. 
+.RE
+.PP
+
+.SS "int client_send_irc_command (char *command, char *parameters)"
+
+.PP
+Send's a command to a server\&. The command may have some parameters that are passed to the function in a string separated by spaces\&. In case that the user wants to send a singles command without parameters to the server, parameter must be a null pointer\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIcommand\fP to send 
+.br
+\fIparameters\fP of the command\&.
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+OK or ERROR depending on wether the function to send messages through the socket has failed or not\&.\&. 
+.RE
+.PP
+
+.SS "void* client_thread_listener (void *arg)"
+
+.PP
+Thread function\&. It receives data through a socket and takes the proper action depending on the message that receives\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIarg\fP Thread management structure\&. 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+always NULL 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for IRC from the source code\&.

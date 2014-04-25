@@ -1,0 +1,298 @@
+.TH "includes/G-2301-03-P2-call_funcs.h" 3 "Fri Apr 25 2014" "Version 2.0" "IRC" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-2301-03-P2-call_funcs.h \- 
+.SH SYNOPSIS
+.br
+.PP
+\fC#include <sys/types\&.h>\fP
+.br
+
+.SS "Macros"
+
+.in +1c
+.ti -1c
+.RI "#define \fBOK\fP   0"
+.br
+.ti -1c
+.RI "#define \fBERROR\fP   -1"
+.br
+.ti -1c
+.RI "#define \fBERROR_ALREADY_CALLING\fP   -2"
+.br
+.ti -1c
+.RI "#define \fBERROR_ALREADY_SETUP\fP   -3"
+.br
+.ti -1c
+.RI "#define \fBERROR_SOCKET\fP   -4"
+.br
+.ti -1c
+.RI "#define \fBERROR_BINDING\fP   -5"
+.br
+.ti -1c
+.RI "#define \fBERROR_TIMEOUTSET\fP   -6"
+.br
+.ti -1c
+.RI "#define \fBERROR_GETPORTBOUND\fP   -7"
+.br
+.ti -1c
+.RI "#define \fBERROR_PARAM\fP   -8"
+.br
+.ti -1c
+.RI "#define \fBERROR_THREAD\fP   -9"
+.br
+.ti -1c
+.RI "#define \fBTIMEOUT_DEFAULT\fP   10000"
+.br
+.ti -1c
+.RI "#define \fBMAX_BUF\fP   256"
+.br
+.ti -1c
+.RI "#define \fBRECORD_SIZE\fP   160"
+.br
+.ti -1c
+.RI "#define \fBRTP_SETV\fP(h, v)   ((h)->v_p_x_cc = (((h)->v_p_x_cc&0x3F)|((v)*64)))"
+.br
+.ti -1c
+.RI "#define \fBRTP_GETV\fP(h)   (((h)->v_p_x_cc >> 6)&0x03)"
+.br
+.ti -1c
+.RI "#define \fBRTP_SETP\fP(h, p)   ((h)->v_p_x_cc = (((h)->v_p_x_cc&0xDF)|(((p)*32)&0x20)))"
+.br
+.ti -1c
+.RI "#define \fBRTP_GETP\fP(h)   (((h)->v_p_x_cc >> 5)&0x01)"
+.br
+.ti -1c
+.RI "#define \fBRTP_SETX\fP(h, x)   ((h)->v_p_x_cc = (((h)->v_p_x_cc&0xEF)|(((x)*16)&0x10)))"
+.br
+.ti -1c
+.RI "#define \fBRTP_GETX\fP(h)   (((h)->v_p_x_cc >> 4)&0x01)"
+.br
+.ti -1c
+.RI "#define \fBRTP_SETCC\fP(h, cc)   ((h)->v_p_x_cc = (((h)->v_p_x_cc&0xF0)|((cc)&0x0F)))"
+.br
+.ti -1c
+.RI "#define \fBRTP_GETCC\fP(h)   (((h)->v_p_x_cc)&0x0F)"
+.br
+.ti -1c
+.RI "#define \fBRTP_SETM\fP(h, m)   ((h)->m_pt = (((h)->m_pt&0x7F)|((m)&0x80)))"
+.br
+.ti -1c
+.RI "#define \fBRTP_GETM\fP(h)   (((h)->m_pt >> 7)&0x01)"
+.br
+.ti -1c
+.RI "#define \fBRTP_SETPT\fP(h, pt)   ((h)->m_pt = (((h)->m_pt&0x80)|((pt)&0x7F)))"
+.br
+.ti -1c
+.RI "#define \fBRTP_GETPT\fP(h)   (((h)->m_pt)&0x7F)"
+.br
+.in -1c
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "struct \fB__attribute__\fP ((__packed__)) struct_rtp"
+.br
+.ti -1c
+.RI "long \fBsetup_call\fP (u_int16_t port, long int timeout)"
+.br
+.RI "\fISetups a socket to make a call\&. \fP"
+.ti -1c
+.RI "int \fBcall\fP (char *ip, u_int16_t port)"
+.br
+.RI "\fIMakes a call to an IP and port\&. \fP"
+.ti -1c
+.RI "char \fBalready_calling\fP ()"
+.br
+.RI "\fIIf a call is in progress\&. \fP"
+.ti -1c
+.RI "char \fBis_finished_call\fP ()"
+.br
+.RI "\fIIf a call has finished\&. \fP"
+.ti -1c
+.RI "int \fBis_caller_ip\fP (char *ip)"
+.br
+.RI "\fIIf the ip passed maches caller ip\&. \fP"
+.ti -1c
+.RI "void \fBend_call\fP ()"
+.br
+.RI "\fIEnds a call\&. \fP"
+.ti -1c
+.RI "void \fBsetup_rtp_header\fP (rtp_header *h, int v, int p, int x, int cc, int m, int pt)"
+.br
+.RI "\fIBuilds a part of an rtp_header\&. \fP"
+.ti -1c
+.RI "void \fBbuild_rtp_header\fP (rtp_header *h, u_int16_t seq, u_int32_t timestamp, u_int32_t ssrc)"
+.br
+.RI "\fIBuilds a part of an rtp_header\&. \fP"
+.in -1c
+.SS "Variables"
+
+.in +1c
+.ti -1c
+.RI "\fBrtp_header\fP"
+.br
+.in -1c
+.SH "Detailed Description"
+.PP 
+Functions for management of calls and sound\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "char already_calling ()"
+
+.PP
+If a call is in progress\&. A global variable is set to 1 when a conversation starts ('call' function succeded)\&. Thus, with this function can be checked if a call is in progress\&.
+.PP
+\fBReturns:\fP
+.RS 4
+0 if no call is in progress, 1 if a call is in progress 
+.RE
+.PP
+
+.SS "void build_rtp_header (rtp_header *h, u_int16_tseq, u_int32_ttimestamp, u_int32_tssrc)"
+
+.PP
+Builds a part of an rtp_header\&. Sets the part of the rtp header to the values passed as argument\&. See rfc 3550 for details on rtp header\&.\&. These parameters usually change with every new packet sent\&.
+.PP
+This function is not needed for the standard procedure of a call, but it can be used to build rtp headers with other purposes
+.PP
+\fBParameters:\fP
+.RS 4
+\fIh\fP rtp header to fill with paramters 
+.br
+\fIseq\fP seq field in rtp header 
+.br
+\fItimestamp\fP timestamp field in rtp header 
+.br
+\fIssrc\fP ssrc field in rtp header
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBsetup_rtp_header\fP 
+.RE
+.PP
+
+.SS "int call (char *ip, u_int16_tport)"
+
+.PP
+Makes a call to an IP and port\&. Uses the already set up socket (see setup_call) to make a call to the IP and port specified\&. Creates two threads that start sending/playing audio recorded/received An error in parameters passed (ERROR_PARAM) lets socket still usable if this function is called again with correct parameters\&. Any other error, closes the socket and a setup_call must be done before trying to call again\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIip\fP string containing ip to call (i\&.e '194\&.12\&.1\&.2') 
+.br
+\fIport\fP Port number in which such IP is expecting the connection\&.
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+0 on success\&. ERROR_PARAM ip specified is not correct (or not IPv4) ERROR_SOCKET Error alocating memory for sockaddr_in variables ERROR_THREAD Error creating threads to manage the call\&.
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBsetup_call()\fP, \fBend_call()\fP 
+.RE
+.PP
+
+.SS "void end_call ()"
+
+.PP
+Ends a call\&. Closes socket and terminates threads that manages the call\&. Sets every global variable to 0 so another call can be initiated (after another setup_call) 
+.SS "int is_caller_ip (char *ip)"
+
+.PP
+If the ip passed maches caller ip\&. This functions checks if the ip passed matches the ip address of the caller of the call already in progress(if no call in progress it will compare to ip 0\&.0\&.0\&.0)
+.PP
+\fBParameters:\fP
+.RS 4
+\fIip\fP String representing ip to check (i\&.e '154\&.1\&.123\&.5')
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+0 if IPs doesn't match, 1 if they do\&. 
+.RE
+.PP
+
+.SS "char is_finished_call ()"
+
+.PP
+If a call has finished\&. If a call has finished (because of the socket timing out) and no \fBend_call()\fP has been performed, another call cannot be set up\&. This function checks if a call has already ended so the needed \fBend_call()\fP is done by the developer\&.
+.PP
+\fBReturns:\fP
+.RS 4
+0 if no call has finished, 1 if a call has finished
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBend_call\fP, \fBcall()\fP, \fBsetup_call()\fP 
+.RE
+.PP
+
+.SS "long setup_call (u_int16_tport, long inttimeout)"
+
+.PP
+Setups a socket to make a call\&. Creates an UDP socket and binds it to the port passed (0 for any) and sets its timeout to 'timeout' miliseconds (0 for no timeout)\&. Leaves the socket ready to 'call'
+.PP
+\fBParameters:\fP
+.RS 4
+\fIport\fP port to bind the socket to\&. 
+.br
+\fItimeout\fP time in miliseconds before socket closure when performing a blocking recv\&.
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+port to which the socket was bound\&. ERROR_ALREADY_CALLING A call is in progress, must end it first ERROR_ALREADY_SETUP A Socket unused already exists, use it or \fBend_call()\fP first\&. ERROR_SOCKET Error creating the socket\&. ERROR_BINDING Error binding socket ERROR_TIMEOUTSET Error setting timeout for the socket\&. ERROR_GETPORTBOUND Error getting port to which the socket was bound\&.
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBcall()\fP, \fBend_call()\fP 
+.RE
+.PP
+
+.SS "void setup_rtp_header (rtp_header *h, intv, intp, intx, intcc, intm, intpt)"
+
+.PP
+Builds a part of an rtp_header\&. Sets the part of the rtp header to the values passed as argument\&. See rfc 3550 for details on rtp header\&.\&. Usually these parameters are not modified during connection, thats why they can be fixed and just call build_rtp_header to complete the header for every packet sent\&.
+.PP
+This function is not needed for the standard procedure of a call, but it can be used to build rtp headers with other purposes
+.PP
+\fBParameters:\fP
+.RS 4
+\fIh\fP rtp header to fill with paramters 
+.br
+\fIv\fP v field in rtp header 
+.br
+\fIp\fP p field in rtp header 
+.br
+\fIx\fP x field in rtp header 
+.br
+\fIcc\fP cc field in rtp header 
+.br
+\fIm\fP m field in rtp header 
+.br
+\fIpt\fP pt field in rtp header
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBbuild_rtp_header\fP 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for IRC from the source code\&.

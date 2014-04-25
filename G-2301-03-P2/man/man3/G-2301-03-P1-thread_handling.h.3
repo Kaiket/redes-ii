@@ -1,0 +1,99 @@
+.TH "includes/G-2301-03-P1-thread_handling.h" 3 "Fri Apr 25 2014" "Version 2.0" "IRC" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-2301-03-P1-thread_handling.h \- 
+.SH SYNOPSIS
+.br
+.PP
+\fC#include <pthread\&.h>\fP
+.br
+
+.SS "Data Structures"
+
+.in +1c
+.ti -1c
+.RI "struct \fBThread_handler\fP"
+.br
+.in -1c
+.SS "Macros"
+
+.in +1c
+.ti -1c
+.RI "#define \fBNOT_REFRESHED\fP   -1 /*value of array_first_free after the free position it announced has been occupied*/"
+.br
+.ti -1c
+.RI "#define \fBFULL_ARRAY\fP   -2 /*if the current thread_array is full this will be the value returned by \fBseek_array_first_free\fP*/"
+.br
+.in -1c
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "int \fBlaunch_thread\fP (int client_sock, void *(*thread_routine)(void *arg))"
+.br
+.RI "\fILaunch a new thread for socket operation management\&. \fP"
+.ti -1c
+.RI "int \fBnbjoin_threads\fP (void)"
+.br
+.RI "\fIPerforms a non-blocking join for every active thread currently in the array\&. \fP"
+.ti -1c
+.RI "int \fBseek_array_first_free\fP (void)"
+.br
+.RI "\fISeeks the thread_array for the first non-active thread and sets array_first_free value accordingly\&. \fP"
+.in -1c
+.SH "Detailed Description"
+.PP 
+Set of functions for thread handling\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "int launch_thread (intclient_sock, void *(*)(void *arg)thread_routine)"
+
+.PP
+Launch a new thread for socket operation management\&. The thread launched execute the thread_routine\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fIclient_sock\fP the socket of the client which is going to be attended\&. 
+.br
+\fIthread_routine\fP the routine to execute\&.
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+On success, it returns OK\&. On failure, it returns ERROR and log the error\&. 
+.RE
+.PP
+
+.SS "int nbjoin_threads (void)"
+
+.PP
+Performs a non-blocking join for every active thread currently in the array\&. Sets the value of array-first-free global variable to the first non-active thread after the join 
+.PP
+\fBReturns:\fP
+.RS 4
+the fisrt available slot on the array\&. 
+.RE
+.PP
+
+.SS "int seek_array_first_free (void)"
+
+.PP
+Seeks the thread_array for the first non-active thread and sets array_first_free value accordingly\&. Use not recommended, it is better to perform a nbjoin_threads call and let it set the value\&. 
+.PP
+\fBReturns:\fP
+.RS 4
+The first available slot on the array or FULL_ARRAY if it is full\&. 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for IRC from the source code\&.

@@ -1,0 +1,51 @@
+.TH "includes/G-2301-03-P1-parser.h" 3 "Fri Apr 25 2014" "Version 2.0" "IRC" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-2301-03-P1-parser.h \- 
+.SH SYNOPSIS
+.br
+.PP
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "int \fBparser\fP (int total, char *strings[], char *msg)"
+.br
+.RI "\fICheck if any of an amount of strings is part of the beginning of another string\&. \fP"
+.in -1c
+.SH "Detailed Description"
+.PP 
+Parser function\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "int parser (inttotal, char *strings[], char *msg)"
+
+.PP
+Check if any of an amount of strings is part of the beginning of another string\&. The parser function receives an array of strings that could be the beginning of the string 'msg'\&. If 'msg' starts with any of these strings, parser returns the position on the strings[] array where the pointer to the beginning of msg is\&.
+.PP
+\fBParameters:\fP
+.RS 4
+\fItotal\fP number of strings in strings[] 
+.br
+\fIstrings\fP array of strings pointers 
+.br
+\fImsg\fP string to check the beginning 
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+If 'msg' starts with any of these strings, parser returns the position on the strings[] array where the pointer to the beginning of msg is\&. 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for IRC from the source code\&.
