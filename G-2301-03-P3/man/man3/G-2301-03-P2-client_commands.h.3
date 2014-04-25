@@ -1,0 +1,450 @@
+.TH "includes/G-2301-03-P2-client_commands.h" 3 "Fri Apr 25 2014" "Version 2.0" "IRC" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-2301-03-P2-client_commands.h \- 
+.SH SYNOPSIS
+.br
+.PP
+.SS "Macros"
+
+.in +1c
+.ti -1c
+.RI "#define \fBTIMEOUT\fP   10000"
+.br
+.in -1c
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "void \fBcommand_join_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a JOIN command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_nick_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a NICK command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_part_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a PART command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_kick_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a KICK command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_quit_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a QUIT command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_privmsg_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a PRIVMSG command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_invite_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a INVITE command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_ping_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a PING command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_mode_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a MODE command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_error_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a ERROR command\&. \fP"
+.ti -1c
+.RI "void \fBrpl_who_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a WHO reply\&. \fP"
+.ti -1c
+.RI "void \fBrpl_list_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a LIST reply\&. \fP"
+.ti -1c
+.RI "void \fBrpl_invite_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a INVITE reply\&. \fP"
+.ti -1c
+.RI "void \fBrpl_away_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action when receiving a AWAY reply\&. \fP"
+.ti -1c
+.RI "void \fBcommand_query_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action to send a QUERY command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_me_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action to send a ME command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_part_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action to send a PART command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_mode_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action to send a MODE command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_server_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action to send a SERVER command\&. \fP"
+.ti -1c
+.RI "void \fBcommand_exit_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.RI "\fITake the proper action to send a EXIT command\&. \fP"
+.ti -1c
+.RI "int \fBcommand_pcall_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.ti -1c
+.RI "int \fBcommand_paccept_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.ti -1c
+.RI "int \fBcommand_pclose_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.ti -1c
+.RI "void \fBcommand_pcall_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings, char *recv_nick)"
+.br
+.ti -1c
+.RI "void \fBcommand_paccept_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings, char *recv_nick)"
+.br
+.ti -1c
+.RI "void \fBcommand_pclose_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings, char *recv_nick)"
+.br
+.ti -1c
+.RI "int \fBcommand_fsend_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.ti -1c
+.RI "int \fBcommand_faccept_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.ti -1c
+.RI "int \fBcommand_fcancel_out\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings)"
+.br
+.ti -1c
+.RI "void \fBcommand_fsend_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings, char *recv_nick)"
+.br
+.ti -1c
+.RI "void \fBcommand_faccept_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings, char *recv_nick)"
+.br
+.ti -1c
+.RI "void \fBcommand_fcancel_in\fP (char *target_array[MAX_CMD_ARGS+2], int prefix, int n_strings, char *recv_nick)"
+.br
+.in -1c
+.SH "Detailed Description"
+.PP 
+Functions for management incoming and outcoming irc commands\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "void command_error_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a ERROR command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_exit_out (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action to send a EXIT command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_invite_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a INVITE command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_join_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a JOIN command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_kick_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a KICK command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_me_out (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action to send a ME command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_mode_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a MODE command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_mode_out (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action to send a MODE command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_nick_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a NICK command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_part_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a PART command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_part_out (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action to send a PART command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_ping_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a PING command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_privmsg_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a PRIVMSG command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_query_out (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action to send a QUERY command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_quit_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a QUIT command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void command_server_out (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action to send a SERVER command\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void rpl_away_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a AWAY reply\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void rpl_invite_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a INVITE reply\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void rpl_list_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a LIST reply\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SS "void rpl_who_in (char *target_array[MAX_CMD_ARGS+2], intprefix, intn_strings)"
+
+.PP
+Take the proper action when receiving a WHO reply\&. 
+.PP
+\fBParameters:\fP
+.RS 4
+\fItarget_array\fP array with the parameters split up including the command\&. 
+.br
+\fIprefix\fP indicates if in the array there is a prefix 
+.br
+\fIn_strings\fP size of the array\&. 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for IRC from the source code\&.

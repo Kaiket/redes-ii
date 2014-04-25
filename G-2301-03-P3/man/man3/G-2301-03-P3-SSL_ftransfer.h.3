@@ -1,0 +1,177 @@
+.TH "includes/G-2301-03-P3-SSL_ftransfer.h" 3 "Fri Apr 25 2014" "Version 2.0" "IRC" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-2301-03-P3-SSL_ftransfer.h \- 
+.SH SYNOPSIS
+.br
+.PP
+\fC#include <sys/types\&.h>\fP
+.br
+
+.SS "Macros"
+
+.in +1c
+.ti -1c
+.RI "#define \fBOK\fP   0"
+.br
+.ti -1c
+.RI "#define \fBERROR\fP   -1"
+.br
+.ti -1c
+.RI "#define \fBERROR_ALREADY_TRANSFERING\fP   -2"
+.br
+.ti -1c
+.RI "#define \fBERROR_ALREADY_SETUP\fP   -3"
+.br
+.ti -1c
+.RI "#define \fBERROR_SOCKET\fP   -4"
+.br
+.ti -1c
+.RI "#define \fBERROR_BINDING\fP   -5"
+.br
+.ti -1c
+.RI "#define \fBERROR_TIMEOUTSET\fP   -6"
+.br
+.ti -1c
+.RI "#define \fBERROR_GETPORTBOUND\fP   -7"
+.br
+.ti -1c
+.RI "#define \fBERROR_PARAM\fP   -8"
+.br
+.ti -1c
+.RI "#define \fBERROR_THREAD\fP   -9"
+.br
+.ti -1c
+.RI "#define \fBSENDER_SIDE\fP   1"
+.br
+.ti -1c
+.RI "#define \fBRECEIVER_SIDE\fP   2"
+.br
+.ti -1c
+.RI "#define \fBTIMEOUT_DEFAULT\fP   10000"
+.br
+.ti -1c
+.RI "#define \fBMAX_BUFFER\fP   256"
+.br
+.ti -1c
+.RI "#define \fBRECORD_SIZE\fP   160"
+.br
+.in -1c
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "long \fBtransfer\fP (char *ip, u_int16_t port, int side, char *filename, u_int32_t size)"
+.br
+.RI "\fIMakes a transfer of a file passed to an IP and port\&. \fP"
+.ti -1c
+.RI "char \fBalready_transfering\fP ()"
+.br
+.RI "\fIIf a transfer is in progress\&. \fP"
+.ti -1c
+.RI "char \fBis_finished_transfer\fP ()"
+.br
+.RI "\fIIf a transfer has finished\&. \fP"
+.ti -1c
+.RI "int \fBis_sender_ip\fP (char *ip)"
+.br
+.RI "\fIIf the ip passed matches peer ip\&. \fP"
+.ti -1c
+.RI "void \fBend_transfer\fP ()"
+.br
+.RI "\fIEnds a transfer\&. \fP"
+.in -1c
+.SH "Detailed Description"
+.PP 
+Functions for SSL conexion\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "char already_transfering ()"
+
+.PP
+If a transfer is in progress\&. A global variable is set to 1 when a transfer starts Thus, with this function can be checked if a transfer is in progress\&.
+.PP
+\fBReturns:\fP
+.RS 4
+0 if no transfer is in progress, 1 if a transfer is in progress 
+.RE
+.PP
+
+.SS "void end_transfer ()"
+
+.PP
+Ends a transfer\&. Closes socket and all SSL variables and terminates threads that manages the transfer\&. Sets every global variable to 0 so another transfer can be initiated 
+.SS "char is_finished_transfer ()"
+
+.PP
+If a transfer has finished\&. If a transfer has finished and no \fBend_transfer()\fP has been performed, another transfer cannot be made\&. This function checks if a transfer has already ended so the needed \fBend_transfer()\fP is done by the developer\&.
+.PP
+\fBReturns:\fP
+.RS 4
+0 if no transfer has finished, 1 if a transfer has finished
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBend_transfer\fP, \fBtransfer()\fP 
+.RE
+.PP
+
+.SS "int is_sender_ip (char *ip)"
+
+.PP
+If the ip passed matches peer ip\&. This functions checks if the ip passed matches the ip address of the peer of the transfer already in progress (if no transfer in progress it will compare to ip 0\&.0\&.0\&.0)
+.PP
+\fBParameters:\fP
+.RS 4
+\fIip\fP String representing ip to check (i\&.e '154\&.1\&.123\&.5')
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+0 if IPs doesn't match, 1 if they do\&. 
+.RE
+.PP
+
+.SS "long transfer (char *ip, u_int16_tport, intside, char *filename, u_int32_tsize)"
+
+.PP
+Makes a transfer of a file passed to an IP and port\&. As a sender, this function opens a TCP socket and waits for an SSL connection, once it is verified it starts transmitting the file passed\&.
+.PP
+As a receiver, this function connects to an IP and port via SSL connection and, once verified, starts saving the file transfered to
+.PP
+\fBParameters:\fP
+.RS 4
+\fIip\fP string containing ip to get the transfer from (for a sender, can be NULL) 
+.br
+\fIport\fP Port number in which such IP is expecting the connection\&. 
+.br
+\fIside\fP Either SENDER_SIDE (file sender) or RECEIVER_SIDE (file receiver) 
+.br
+\fIfilename\fP path to the file that wants to be sent/name to give the file to be received 
+.br
+\fIsize\fP size of the file to be sent/received
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+0 on success\&. ERROR_PARAM ip specified is not correct (or not IPv4) ERROR_SOCKET Error initializing sockets for the connection\&. ERROR_THREAD Error creating threads to manage the transfer\&.
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+\fBend_transfer()\fP 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for IRC from the source code\&.

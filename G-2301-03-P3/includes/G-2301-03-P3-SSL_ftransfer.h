@@ -2,10 +2,11 @@
 #define __SSL_FTRANSFER_H
 
 /**
- * @file G-2301-03-P2-call_funcs.h
- * @details Functions for management of file transfer
+ * @file G-2301-03-P3-SSL_ftransfer.h
+ * @details Functions for SSL conexion.
  * @author Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
 .*/
+
 
 #include <sys/types.h>
 

@@ -1,0 +1,239 @@
+.TH "includes/G-2301-03-P3-SSL_funcs.h" 3 "Fri Apr 25 2014" "Version 2.0" "IRC" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+includes/G-2301-03-P3-SSL_funcs.h \- 
+.SH SYNOPSIS
+.br
+.PP
+.SS "Macros"
+
+.in +1c
+.ti -1c
+.RI "#define \fBOK\fP   0"
+.br
+.ti -1c
+.RI "#define \fBERROR\fP   -1"
+.br
+.ti -1c
+.RI "#define \fBERROR_CTX\fP   -2"
+.br
+.ti -1c
+.RI "#define \fBERROR_LOADVERIFY\fP   -3 /*Error loading a verify location*/"
+.br
+.ti -1c
+.RI "#define \fBERROR_SETPATHS\fP   -4 /*Error setting default verify paths*/"
+.br
+.ti -1c
+.RI "#define \fBERROR_CHAINFILE\fP   -5 /*Error un use chain file*/"
+.br
+.ti -1c
+.RI "#define \fBERROR_PRKEYFILE\fP   -6 /*Error setting key to use*/"
+.br
+.ti -1c
+.RI "#define \fBERROR_SSLNEW\fP   -7"
+.br
+.ti -1c
+.RI "#define \fBERROR_HANDSHAKE\fP   -8"
+.br
+.ti -1c
+.RI "#define \fBERROR_SETFD\fP   -9"
+.br
+.ti -1c
+.RI "#define \fBERROR_NOPEERCERT\fP   -10"
+.br
+.ti -1c
+.RI "#define \fBERROR_VERIFY\fP   -11 /*peer couldn'\fBt\fP be verified*/"
+.br
+.in -1c
+.SS "Functions"
+
+.in +1c
+.ti -1c
+.RI "void \fBinicializar_nivel_SSL\fP ()"
+.br
+.RI "\fIRealiza un setup del nivel SSL\&. \fP"
+.ti -1c
+.RI "SSL_CTX * \fBfijar_contexto_SSL\fP (char *mycert, char *CAcert, const SSL_METHOD *(*method)(void), int verify_mode)"
+.br
+.RI "\fIInicializa un contexto SLL\&. \fP"
+.ti -1c
+.RI "SSL * \fBconectar_canal_seguro_SSL\fP (SSL_CTX *ctx, int socket)"
+.br
+.RI "\fIEstablece una sesion SSL en el socket pasado con el contexto pasado\&. \fP"
+.ti -1c
+.RI "SSL * \fBaceptar_canal_seguro_SSL\fP (SSL_CTX *ctx, int socket)"
+.br
+.RI "\fIEstablece una sesion SSL en el socket pasado con el contexto pasado\&. \fP"
+.ti -1c
+.RI "int \fBevaluar_post_conectar_SSL\fP (SSL *ssl)"
+.br
+.RI "\fIEvalua los certificados del otro lado de la sesion SSL\&. \fP"
+.ti -1c
+.RI "int \fBenviar_datos_SSL\fP (SSL *ssl, void *data, size_t length, size_t segmentsize)"
+.br
+.RI "\fIENvia datos en una sesion SSL\&. \fP"
+.ti -1c
+.RI "int \fBrecibir_datos_SSL\fP (SSL *ssl, void **data, size_t segmentsize, void *enddata, size_t enddata_len)"
+.br
+.RI "\fIRecibe datos en una sesion SSL\&. \fP"
+.ti -1c
+.RI "void \fBcerrar_canal_SSL\fP (SSL *ssl)"
+.br
+.RI "\fICierra un canal ssl de forma segura\&. \fP"
+.in -1c
+.SH "Detailed Description"
+.PP 
+Functions for SSL conexion\&. 
+.PP
+\fBAuthor:\fP
+.RS 4
+Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.RE
+.PP
+
+.SH "Function Documentation"
+.PP 
+.SS "SSL* aceptar_canal_seguro_SSL (SSL_CTX *ctx, intsocket)"
+
+.PP
+Establece una sesion SSL en el socket pasado con el contexto pasado\&. Vincula la conexion activa en socket con el contexto para mantener una sesion SSL Esta funcion se llama desde el lado del SERVIDOR TCP
+.PP
+\fBParameters:\fP
+.RS 4
+\fIctx\fP contexto usado para la sesion SSL 
+.br
+\fIsocket\fP socket con la conexion activa
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+puntero al SSL* si todo OK o NULL si hubo error (establece errno al valor apropiado) 
+.RE
+.PP
+
+.SS "void cerrar_canal_SSL (SSL *ssl)"
+
+.PP
+Cierra un canal ssl de forma segura\&. Cierra de forma ordenada el canal SSL liberando todos los recursos (contexto y socket)
+.PP
+\fBParameters:\fP
+.RS 4
+\fIssl\fP el canal ssl a cerrar 
+.RE
+.PP
+
+.SS "SSL* conectar_canal_seguro_SSL (SSL_CTX *ctx, intsocket)"
+
+.PP
+Establece una sesion SSL en el socket pasado con el contexto pasado\&. Vincula la conexion activa en socket con el contexto para mantener una sesion SSL Esta funcion se llama desde el lado del CLIENTE TCP
+.PP
+\fBParameters:\fP
+.RS 4
+\fIctx\fP contexto usado para la sesion SSL 
+.br
+\fIsocket\fP socket con la conexion activa
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+puntero al SSL* si todo OK o NULL si hubo error (establece errno al valor apropiado) 
+.RE
+.PP
+
+.SS "int enviar_datos_SSL (SSL *ssl, void *data, size_tlength, size_tsegmentsize)"
+
+.PP
+ENvia datos en una sesion SSL\&. Envia la cantidad de datos especificada en length en mensajes de tamaño segmentsize(si procede) de el buffer data a una conexion ssl activa
+.PP
+\fBParameters:\fP
+.RS 4
+\fIssl\fP sesion ssl 
+.br
+\fIdata\fP puntero al buffer de datos 
+.br
+\fIlength\fP tamaño de datos a enviar 
+.br
+\fIsegmentsize\fP maximo tamaño de segmento a enviar, si length es mayor que este parámetro se realizaran los envios en varios paquetes
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+numero de bytes realmente enviados 
+.RE
+.PP
+
+.SS "int evaluar_post_conectar_SSL (SSL *ssl)"
+
+.PP
+Evalua los certificados del otro lado de la sesion SSL\&. Comprueba si el remitente ha enviado certificados y si estos pasan la validacion
+.PP
+\fBParameters:\fP
+.RS 4
+\fIssl\fP puntero a la estructura de sesion ssl
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+OK si pasó la validacion o varios tipos de error si no (ver defines) 
+.RE
+.PP
+
+.SS "SSL_CTX* fijar_contexto_SSL (char *mycert, char *CAcert, const SSL_METHOD *(*)(void)method, intverify_mode)"
+
+.PP
+Inicializa un contexto SLL\&. toma los certificados pasados como argumentos para configurar dicho contexto El método debe ser un puntero a una funcion válida para inicializar un metodo SSL (ver ssl(3)) Verify_mode indica las banderas de inicializacion del contexto
+.PP
+\fBParameters:\fP
+.RS 4
+\fImycert\fP ruta al certificado propio a usar 
+.br
+\fICAcert\fP ruta al certificado de la CA utilizado para validar mycert (puede ser null) 
+.br
+\fImethod\fP metodo de inicializacion del contexto 
+.br
+\fIverify_mode\fP banderas de inicializacion del contexto
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+puntero al contexto o NULL si hubo error\&.
+.RE
+.PP
+\fBSee Also:\fP
+.RS 4
+ssl(3) 
+.RE
+.PP
+
+.SS "void inicializar_nivel_SSL ()"
+
+.PP
+Realiza un setup del nivel SSL\&. Es necesario llamar a esta funcion en toda aplicacion que quiera utilizar SSL\&. Solo hace falta llamarla una vez, no requiere parametros ni tiene valor de retorno\&. 
+.SS "int recibir_datos_SSL (SSL *ssl, void **data, size_tsegmentsize, void *enddata, size_tenddata_len)"
+
+.PP
+Recibe datos en una sesion SSL\&. Recibe en *data los datos leidos del canal ssl\&. Segmentsize debe indicar el maximo tamaño de paquetes que se recibe, cuando una recepcion es menor en tamaño que segmentsize se para de leer
+.PP
+\fBParameters:\fP
+.RS 4
+\fIssl\fP sesion ssl 
+.br
+\fIdata\fP puntero al buffer de datos 
+.br
+\fIsegmentsize\fP maximo tamaño de segmento a recibir 
+.br
+\fIenddata\fP cadena indicando el final de mensaje\&. Si se ha leido un tamaño igual a segmentsize se comprueba si los ultimos bytes leiidos se corresponden con esta cadena (para no hacer mas lecturas y dar por terminado el mensaje) 
+.br
+\fIenddata_len\fP tamaño de la cadena pasada\&.
+.RE
+.PP
+\fBReturns:\fP
+.RS 4
+numero de bytes recibidos\&. 
+.RE
+.PP
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for IRC from the source code\&.

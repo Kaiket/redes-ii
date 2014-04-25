@@ -1,6 +1,13 @@
 #ifndef __SSL_FUNCS_H
 #define __SSL_FUNCS_H
 
+/**
+ * @file G-2301-03-P3-SSL_funcs.h
+ * @details Functions for SSL conexion.
+ * @author Enrique Cabrerizo Fernandez and Guillermo Ruiz Alvarez
+.*/
+
+
 #ifndef OK
         #define OK 0
 #endif
