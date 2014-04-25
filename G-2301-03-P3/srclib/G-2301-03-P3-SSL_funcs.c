@@ -61,7 +61,6 @@ SSL_CTX* fijar_contexto_SSL(char* mycert, char* CAcert, const SSL_METHOD* (*meth
         return NULL;
     }
     SSL_CTX_set_verify(ctx , verify_mode, NULL);
-
     return ctx;
 }
 

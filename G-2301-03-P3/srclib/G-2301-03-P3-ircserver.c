@@ -18,9 +18,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define CACERT "../cert/CACert.pem"
-#define MYCERT "../cert/SCASignedCert.pem"
-
 enum {
     PING,
     MODE,
@@ -96,7 +93,7 @@ void *irc_thread_routine(void *arg) {
 
     /*******************SSL*****************/
     syslog(LOG_NOTICE, "Configuring SSL\n");
-    if (!(ctx=fijar_contexto_SSL(MYCERT, CACERT, &SSLv3_server_method, SSL_VERIFY_PEER))) {
+    if (!(ctx=fijar_contexto_SSL(mycert, cacert, &SSLv23_method, SSL_VERIFY_NONE))) {
         syslog(LOG_NOTICE,"ERROR fixing context\n");
         pthread_exit(NULL);
     }
@@ -106,11 +103,7 @@ void *irc_thread_routine(void *arg) {
         pthread_exit(NULL);
     }
     settings->ssl=ssl;
-    if (evaluar_post_conectar_SSL(ssl)!=OK) {
-        syslog(LOG_NOTICE,"ERROR peer cert not valid\n");
-        cerrar_canal_SSL(ssl);
-        pthread_exit(NULL);
-    }
+    
     /******************SSL******************/    
     
     if (!(my_user=(user*)malloc(sizeof(user)))) {

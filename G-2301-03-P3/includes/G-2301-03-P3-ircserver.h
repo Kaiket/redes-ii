@@ -88,6 +88,9 @@
 #define OPER_USER "someuser"
 #define OPER_PASS "somepass"
 
+char mycert[255];
+char cacert[255];
+
 /*
  * linked list of nicks struct
  */

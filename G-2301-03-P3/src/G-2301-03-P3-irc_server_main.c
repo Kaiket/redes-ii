@@ -3,6 +3,8 @@
 #include <string.h>
 #include <syslog.h>
 #include <errno.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include "G-2301-03-P1-types.h"
 #include "G-2301-03-P1-connection.h"
 #include "G-2301-03-P1-thread_handling.h"
@@ -10,17 +12,20 @@
 #include "G-2301-03-P1-daemonize.h"
 #include "G-2301-03-P3-SSL_funcs.h"
 
+extern char mycert[255];
+extern char cacert[255];
+
 int main(int argc, char **argv) {
 
     int socket, client_socket;
     int port = IRC_DEFAULT_PORT;
 
     /*Parameters processing*/
-    if (argc != 1 && argc != 2) {
-        printf("%s <port (optional)>\n", argv[0]);
+    if (argc < 3) {
+        printf("%s <own cert route from '/'> <CA cert route from '/'> <port (optional)>\n", argv[0]);
         return (EXIT_FAILURE);
-    } else if (argc == 2) {
-        port = atoi(argv[1]);
+    } else if (argc > 3) {
+        port = atoi(argv[3]);
     }
 
     /*Runs in background*/
@@ -41,6 +46,9 @@ int main(int argc, char **argv) {
     
     /*Initializes IRC server data*/
     irc_server_data_init();
+    
+    strcpy(mycert, argv[1]);
+    strcpy(cacert, argv[2]);
     
     /*Accepts connexions and takes charge of them*/
     while (1) {
