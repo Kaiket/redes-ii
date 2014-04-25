@@ -12,19 +12,19 @@
 \begin{document}
 
 \section{Introducción y descripción}
-En este documento se detalla el proceso de implementación de un cliente  \href{http://es.wikipedia.org/wiki/Internet_Relay_Chat}{IRC} a partir del código proporcionado de una interfaz \href{http://www.gtk.org/}{GTK}. Para la elaboración del cliente se han seguido las directrices especificadas en el \href{https://tools.ietf.org/html/rfc2812}{RFC 2812}.
+En este documento se detalla el proceso de modificación del servidor y el cliente IRC para soportar canales seguros. Para realizar este objetivo se crearán certificados firmados por una entidad certificadora creada por los alumnos, se creará un servidor y un cliente de eco para probar la funcionalidad creada y se modificarán el servidor y el cliente IRC creados en las prácticas anteriores utilizando las funciones implementadas para soportar canales seguros.
 
-La interfaz gráfica de usuario se compone de varias partes. En primer lugar, el usuario puede introducir sus datos de conexión en los campos de texto y conectarse y desconectarse de un servidor utilizando los botones de conexión y desconexión. En segundo lugar, el usuario puede utilizar el campo de introducción de texto principal para enviar comandos al servidor y mensajes a los usuarios conectados en dicho servidor. Finalmente, el usuario puede utilizar los \textit{checkboxes} para modificar los modos de un canal en el que tenga privilegios.
-
-Toda la información recibida aparecerá en la pantalla principal del la interfaz.
+Para la creación de certificados y de la entidad certificadora se utilizará el software de \href{https://www.openssl.org/}{OpenSSL} en un script de bash llamado \textbf{cert.bash} que generará los certificados y a su vez los firma a través de la entidad certificadora creada por el mismo script.
 
 \section{Organización de directorios y ficheros.}
-En lo que respecta a la organización de los ficheros, se han añadido nuevos directorios modificando ligeramente la estructura:
+En esta práctica se ha añadido un directorio más donde se almacenan los certificados generados por el alumno y la CA:
 
 El directorio raíz, cuyo nombre es \texttt{G-2301-03-P2} contiene los siguientes directorios:
 
 \begin{itemize}
 \item \textbf{bin} contiene los ejecutables creados despues de la compilación y el enlazado.
+
+\item \textbf{cert} contiene los certificados generados y la CA.
 
 \item \textbf{doc} contiene la documentación del proyecto en formato PDF.
 
@@ -44,7 +44,9 @@ El directorio raíz, cuyo nombre es \texttt{G-2301-03-P2} contiene los siguiente
 En el directorio raíz se encuentran el fichero Makefile necesario para la compilación y enlazado de los archivos además del fichero de configuración de Doxygen.
 
 \section{Makefile}
-Para compilar y enlazar se proporciona un fichero Makefile a ejecutar con el programa \texttt{make}. En esta práctica se han añadido directivas que se presentan a continuación.
+Para compilar y enlazar se proporciona un fichero Makefile a ejecutar con el programa \texttt{make}.
+
+En esta práctica, además de añadir las nuevas funciones implementadas a las librerías correspondientes, se ha incluido una llamada a ejecución del script en bash creado para la generación y firma de los certificados.
 
 \subsection{Directivas}
 Las directivas proporcionadas son las siguientes:
@@ -90,7 +92,7 @@ Para cambiar el nombre de los directorios o añadir ficheros de cabecera extra, 
 En esta práctica se ha ampliado el número de librerías ofreciendo tres librerías diferenciadas según la utilidad de las mismas:
 
 \begin{itemize}
-\item \textbf{G-2301-03-P2-libconnection.a} ofrece todas las funciones necesarias de conexión, incluyendo el manejo de hilos, la daemonización y el uso de semáforos.
+\item \textbf{G-2301-03-P2-libconnection.a} ofrece todas las funciones necesarias de conexión, incluyendo el manejo de hilos, la daemonización y el uso de semáforos y las funciones de conexión segura.
 
 \item \textbf{G-2301-03-P2-libirc.a} ofrece todas las funciones necesarias relacionadas con IRC. Incluyendo funciones de cliente y servidor.
 
@@ -99,48 +101,38 @@ En esta práctica se ha ampliado el número de librerías ofreciendo tres librer
 
 La descripción precisa de todas estas funciones se encuentra en la páginas de manual (\texttt{man pages}) realizadas por los autores en el directorio correspondiente.
 
-\section{Estructura, funcionalidad y pruebas del cliente}
+\section{Canales seguros}
 
-El cliente implementado parte de la implementación de la interfaz gráfica en el fichero \textbf{G-2301-P2-chat.c}. Todos los eventos de dicha interfaz producen la ejecución de las funciones implementadas en \textbf{G-2301-P2-chat$\_$funcs.c}. Se ha añadido un módulo auxiliar llamado \textbf{G-2301-P2-client$\_$utility$\_$functions.c} donde se implementa el hilo principal que recibe datos del servidor y las funciones necesarias para el envío de comandos y tratamiento de los datos recibidos.
+\subsection{Funciones SSL}
+Para el soporte de canales seguros, se han implementado las funciones de SLL especificadas en el enunciado usando las funciones específicas de OpenSSL en el fichero \textbf{G-2301-03-P3-SSL$\_$funcs.c}.
 
-El proceso y estructura de la implementación de la conexión, desconexión y el envío y recepción de comandos se describe a continuación.
+Dichas funciones se utilizan más tarde tanto para la implementación del servidor y el cliente de eco como para la modificación del cliente y el servidor creados y la transferencia de archivos por canal seguro.
 
-\subsection{Conexión y desconexión}
-Cuando el usuario desee conectarse a un servidor IRC es \textbf{necesario} que rellene la totalidad de los campos de información de usuario (Apodo, Nombre, Nombre real, Servidor\footnote{Puede utilizarse tanto la IP con la URL del servidor de chat.}). En el caso de que el campo de puerto se deje vacío o se escriba IRC se utilizará el puerto predeterminado de IRC 6667. En el momento en el que se pulsa el botón de conexión se ejecuta una función implementada en \textbf{G-2301-P2-chat$\_$funcs.c} que se encarga de manejar el evento. Dicha función realiza llamada a una función del fichero \textbf{G-2301-P2-client$\_$utility$\_$functions.c} que se encarga de realizar las acciones necesarias para establecer una conexión con el servidor.
+\subsection{Certificados y entidad certificadora}
+Para la creación de certificados y la firma de los mismos a través de la CA originada, se ha escrito un script en bash que es ejecutado junto con la compilación del proyecto. 
 
-En el caso de la desconexión, el evento se captura y se manda una petición de desconexión al servidor. Una vez recibida la respuesta, el cliente se desconecta.
+Este script, a parte de crear la entidad certificadora para la firma de los certificados del cliente y del servidor, realiza la autofirma de dos certificados agregados (uno de cliente y otro de servidor) para comprobar que estos son rechazados por no haber sido firmados por la CA.
 
-\subsection{Envío de comandos y mensajes}
-Para el envío de datos se distingue si la cadena introducida es un comando o un mensaje.
-Tras ello, una función de \textbf{G-2301-P2-client$\_$utility$\_$functions.c} envía el mensaje o identifica el comando introducido. En el caso de que el texto introducido sea un comando se realizará una llamada a una función de \textbf{G-2301-P2-client$\_$commands.c} que realizará las operaciones necesarias para el correcto envío del comando. Entre estas operaciones se encuentra la modificación de parámetros de entorno para mantener el estado del programa.
+\subsection{Servidor y cliente de Eco}
+Para las pruebas de la funcionalidad creada se han implementado un servidor y un cliente de Eco descritos a continuación.
 
-\subsection{Recepción de comandos y mensajes}
-Al igual que en el envío de los datos, para la recepción de los mismos, tras conectar con un servidor, se lanza un hilo que se encarga de recibir toda la información a través del socket de conexión con dicho servidor.
+El servidor de Eco utiliza las funciones implementadas para aceptar conexiones a través de un canal seguro y simplemente responde lo que ha recibido. El comando squit termina con el servidor finalizando la conexión segura. 
 
-Una vez recibidos los datos, se identifica el comando/mensaje recibido y se realiza una llamada a una función implementada en \textbf{G-2301-P2-client$\_$commands.c}, que se encarga de mostrar el mensaje, su significado o en su caso, modificar los parámetros de entorno necesarios.
+El cliente de Eco utiliza las mismas funciones para enviar datos a través de un canal seguro. El comando cquit termina con el servidor finalizando la conexión segura. 
 
-\section{Ampliación multimedia del cliente}
+\subsection{Soporte de SSL del cliente y el servidor IRC}
+Para proporcionar funcionalidad de soporte de conexiones seguras al cliente y al servidor implementados se han sustituido las funciones de conexión, envío y recepción por las correspondientes seguras implementadas y descritas en secciones anteriores además de realizar las operaciones de inicialización de contexto y obtención de un canal seguro necesarias para completar dicho objetivo.
 
-Tras la implementación del cliente, se ha añadido una funcionalidad multimedia para la transmisión de sonido. El proceso seguido se describe a continuación.
+\section{Transferencia de archivos}
+Para la tranferencia de archivos por canal seguro se ha realizado lo siguiente: cuando un extremo desea enviar un fichero dicho extremo actúa como servidor, de forma que el extremo contrario ha de realizar una conexión TCP para la recepción del fichero.
 
-Se compone la cabecera RTP a partir de dos funciones, rtp$\_$header$\_$setup que fija una serie de parámetros que van a ser fijos durante toda la conexion y rtp$\_$header$\_$build que se llama para completar la cabecera con los parámetros que varían para cada paquete (timestamp y número de secuencia).
-Se han creado una serie de funciones que realizan una configuracion de la llamada.
-Primero tenemos setup$\_$call que crea un socket e inicializa un timeout para dicho socket.
-La funcion call() recibe una ip y un socket y comienza a grabar/enviar y recibir/reproducir los paquetes de audio que llegan de dicha ip y socket mediante dos hilos que se lanzan en el momento de establecer la llamada.
-Tal como manda el protocolo RTP, se comprueban el SSRC y se ignoran paquetes cuyo numero de secuencia es inferior al ultimo reproducido o cuyo formato sea diferente al acordado.
-Para terminar la llamada se llama a end$\_$call() que cierra los  hilos y libera los recursos dejando las variables listas para  un nuevo setup$\_$call.
+Al igual que como se hizo con el sonido, el acuerdo de esta conexión se realiza con comandos de IRC que se implementan en el cliente.
 
-Una vez implementado el protocolo, se añaden los comandos \texttt{pcall}, \texttt{paccept} y \texttt{pclose} al cliente. Los tres comandos reciben como único parámetro el nick del usuario con el que se quiere contactar o cerrar la conexión.
+\section{Pruebas}
+Para las pruebas del servidor se han utilizado tanto el certificado firmado por la CA como el autofirmado, obteniendo como resultado un rechazo del certificado que no ha sido firmado por la CA. En el caso del cliente, el resultado ha sido equivalente con los correspondientes certificados.
+Con wireshark se ha comprobado que los datos enviados en ambos casos aparecen cifrados.
 
-Para establecer una llamada, un usuario escribe el comando pcall usando como parámetro el nombre del usuario con el que quiere contactar. Internamente, se realiza un setup$\_$call y se manda un mensaje privado al usuario indicando que se quiere contactar con él, enviando también la IP y el puerto al que se ha asociado el socket del setup$\_$call. 
+En el caso del servidor y el cliente modificados para el soporte de SSL, se han realizado pruebas con XCHAT para comprobar que la conexión con el servidor se establece correctamente y con wireshark se ha observado que el flujo de datos enviado aparece encriptado.
 
-El usuario destino recibe este mensaje y puede responder usando el comando paccept. En este caso, también se realiza un setup$\_$call y se responde con la IP y el puerto al que se ha asociado el socket. Tras ello, se realiza un call mientras el otro usuario recibe la aceptación. Una vez recibida, este realiza otro call y se establece la conexión.
-
-Para cerrar dicha conexión basta con que cualquiera de los usuarios escriba el comando pclose usando como parámetro el nombre del usuario con el que está comunicándose.
-
-\subsection{Pruebas}
-Para realizar las pruebas del cliente y de la funcionalidad multimedia se ha establecido conexión con varios servidores de IRC (debian, ubuntu, ...) y se han probado los comandos descritos en los requisitos. 
-
-Tras comprobar que la funcionalidad es correcta se han conectado dos ordenadores a una misma red local a través de una conexión inalámbrica y se ha realizado una llamada de uno a otro, comprobando que el sonido se enviaba de forma correcta y sin cortes.
-
+Para ciertos módulos para los que se ha considerado oportuno, como en el caso de la tranferencia de archivos, se han creado test de prueba, cuyas fuentes se incluirán en el directorio src.
 \end{document}
