@@ -192,7 +192,6 @@ int recibir_datos_SSL(SSL* ssl, void** data, size_t segmentsize, void* enddata, 
     return total_received;
 }
 
-
 void cerrar_canal_SSL(SSL* ssl) {
     int fd;
     fd = SSL_get_fd(ssl);       /* get socket connection */

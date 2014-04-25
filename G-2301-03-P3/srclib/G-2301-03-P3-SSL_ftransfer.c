@@ -128,6 +128,7 @@ void* trreceiver_thread_routine(void *arg) {
         cerrar_canal_SSL(transfer_ssl);
         pthread_exit(NULL);
     }
+    /*set the name of the file*/
     strcat(localname, DOWNLOAD_DIR);
     if ((fn=strrchr(transfer_filename, '/'))) {
         strcat(localname, fn+1);
@@ -148,6 +149,7 @@ void* trreceiver_thread_routine(void *arg) {
         free(buf);
         buf=NULL;
     }
+    /*closing and exiting*/
     fclose(transfer_file);
     finished_transfer=FINISHED_OK;
     pthread_exit(NULL);
@@ -223,17 +225,18 @@ long transfer(char* ip, u_int16_t port, int side, char* filename, u_int32_t size
     return OK;
 }
 
-/*ends a transfer*/
+/*ends a transfer, closing SSL connections if needed and freeing all resources*/
 void end_transfer() {
-    
+    /*close ssl connection if error is not from SSL (already closes)*/
     if (!finished_transfer || finished_transfer==FINISHED_ERR || finished_transfer==FINISHED_OK) {
         if (transfer_ssl) {
                 cerrar_canal_SSL(transfer_ssl);
                 transfer_ssl=NULL;
         }
+        transfer_ssl=NULL;
         finished_transfer=1;
     }
-    if (transfer_thread) {
+    if (transfer_thread) { /*wait for thread launch*/
         pthread_join(transfer_thread, NULL);
         transfer_thread=0;
     }

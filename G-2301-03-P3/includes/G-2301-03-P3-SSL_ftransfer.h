@@ -40,48 +40,51 @@
  * As a receiver, this function connects to an IP and port via SSL connection
  * and, once verified, starts saving the file transfered to 
  * 
- * @param ip string containing ip to call (i.e "194.12.1.2")
+ * @param ip string containing ip to get the transfer from (for a sender, can be NULL)
  * @param port Port number in which such IP is expecting the connection.
+ * @param side Either SENDER_SIDE (file sender) or RECEIVER_SIDE (file receiver)
+ * @param filename path to the file that wants to be sent/name to give the file to be received
+ * @param size size of the file to be sent/received
  * 
  * @return 0 on success.
  *      ERROR_PARAM ip specified is not correct (or not IPv4)
- *      ERROR_SOCKET Error alocating memory for sockaddr_in variables
- *      ERROR_THREAD Error creating threads to manage the call.
+ *      ERROR_SOCKET Error initializing sockets for the connection.
+ *      ERROR_THREAD Error creating threads to manage the transfer.
  *      
  *
- * @see setup_call(), end_call()
+ * @see end_transfer()
  */
 long transfer(char* ip, u_int16_t port, int side, char* filename, u_int32_t size);
 
 /** 
- * @brief If a call is in progress
+ * @brief If a transfer is in progress
  *  
- * @details A global variable is set to 1 when a conversation starts ("call" function succeded).
- * Thus, with this function can be checked if a call is in progress.
+ * @details A global variable is set to 1 when a transfer starts
+ * Thus, with this function can be checked if a transfer is in progress.
  * 
- * @return 0 if no call is in progress, 1 if a call is in progress
+ * @return 0 if no transfer is in progress, 1 if a transfer is in progress
  *
  */
 char already_transfering();
 
 /** 
- * @brief If a call has finished 
+ * @brief If a transfer has finished 
  * 
- * @details If a call has finished (because of the socket timing out) and no end_call()
- * has been performed, another call cannot be set up.
- * This function checks if a call has already ended so the needed end_call() is done by the developer.
+ * @details If a transfer has finished and no end_transfer()
+ * has been performed, another transfer cannot be made.
+ * This function checks if a transfer has already ended so the needed end_transfer() is done by the developer.
  * 
- * @return 0 if no call has finished, 1 if a call has finished
+ * @return 0 if no transfer has finished, 1 if a transfer has finished
  *
- * @see end_call, call(), setup_call()
+ * @see end_transfer, transfer()
  */
 char is_finished_transfer();
 
 /** 
- * @brief If the ip passed maches caller ip
+ * @brief If the ip passed matches peer ip
  * 
- * @details This functions checks if the ip passed matches the ip address of the caller
- * of the call already in progress(if no call in progress it will compare to ip 0.0.0.0)
+ * @details This functions checks if the ip passed matches the ip address of the peer
+ * of the transfer already in progress (if no transfer in progress it will compare to ip 0.0.0.0)
  * 
  * @param ip String representing ip to check (i.e "154.1.123.5")
  * 
@@ -91,10 +94,10 @@ char is_finished_transfer();
 int is_sender_ip(char *ip);
 
 /** 
- * @brief Ends a call
+ * @brief Ends a transfer
  * 
- * @details Closes socket and terminates threads that manages the call.
- * Sets every global variable to 0 so another call can be initiated (after another setup_call)
+ * @details Closes socket and all SSL variables and terminates threads that manages the transfer.
+ * Sets every global variable to 0 so another transfer can be initiated
  * 
  */
 void end_transfer();
