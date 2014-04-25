@@ -501,7 +501,10 @@ gboolean ordered_exit (GtkWidget *widget, GdkEvent *event, gpointer user_data){
   semaphore_rm(writer);
   semaphore_rm(mutex_access);
   semaphore_rm(mutex_rvariables);
-  cerrar_canal_SSL(ssl);
+  if(ssl){
+    cerrar_canal_SSL(ssl);
+  }
+  
   ERR_free_strings();
 
   return FALSE;

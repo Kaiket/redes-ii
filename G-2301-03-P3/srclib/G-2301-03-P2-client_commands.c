@@ -317,13 +317,13 @@ void command_privmsg_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
                     command_pclose_in((char **) target_array, prefix, n_strings, recv_nick);
                 }
                 else if(!strncasecmp(message, FSEND_CMD_STR, strlen(FSEND_CMD_STR))){
-                    command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
+                    command_fsend_in((char **) target_array, prefix, n_strings, recv_nick);
                 }
                 else if(!strncasecmp(message, FACCEPT_CMD_STR, strlen(FACCEPT_CMD_STR))){
-                    command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
+                    command_faccept_in((char **) target_array, prefix, n_strings, recv_nick);
                 }
                 else if(!strncasecmp(message, FCANCEL_CMD_STR, strlen(FCANCEL_CMD_STR))){
-                    command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
+                    command_fcancel_in((char **) target_array, prefix, n_strings, recv_nick);
                 }
                 else{
                     interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
@@ -1026,12 +1026,14 @@ int command_fsend_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     }
 
     semaphore_aw(writer, readers);
+
     interfaceText(NULL, "Petición de envío realizada.", MSG_TEXT, MAIN_THREAD);
     return OK;
 }
 
 int command_faccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
     
+    char message[BUFFER];
 
     /*Checking parameters*/
     if(n_strings-prefix < 2){
@@ -1047,16 +1049,18 @@ int command_faccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
 
     if(strcasecmp(fromsend_nick, target_array[prefix+1])){
         interfaceText(NULL, "Ha de aceptar una petición del último usuario que la envió", MSG_TEXT, MAIN_THREAD);
+        semaphore_aw(writer, readers);
         return OK;
     }
 
-    if(!transfer(their_sending_ip, their_sending_port, RECEIVER_SIDE, filename, filesize)){
+    if(transfer(their_sending_ip, their_sending_port, RECEIVER_SIDE, filename, filesize) == ERROR){
         interfaceText(NULL, "Error de recepcion.", MSG_TEXT, MAIN_THREAD);
         semaphore_aw(writer, readers);
         return OK;
     }
     else{
-        interfaceText(NULL, "Recepción.", MSG_TEXT, MAIN_THREAD);
+        sprintf(message, "Recepción de %s %ld %s %ld", their_sending_ip, their_sending_port, filename, filesize);
+        interfaceText(NULL, message, MSG_TEXT, MAIN_THREAD);
     }
 
     semaphore_aw(writer, readers);
@@ -1078,7 +1082,7 @@ int command_fcancel_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
 
     interfaceText(NULL, "Conexión cerrada.", MSG_TEXT, MAIN_THREAD);
 
-    sprintf(message, "%s :Conexión cerrada", tosend_nick);
+    sprintf(message, "%s :Conexión cerrada", fromsend_nick);
 
     semaphore_bw(writer, readers);
     if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
@@ -1087,7 +1091,7 @@ int command_fcancel_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
         return OK;
     }
 
-
+    semaphore_aw(writer, readers);
     return OK;
 }
 
@@ -1096,6 +1100,7 @@ void command_fsend_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     char message[BUFFER];
     char fileinfo[BUFFER];
     char *ip, *port, *fname, *fsize;
+
 
     /*Receive message*/
     strcpy(message, target_array[prefix+2]+sizeof(char));
@@ -1128,7 +1133,7 @@ void command_fsend_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     strcpy(fromsend_nick, recv_nick);
 
     strcpy(their_sending_ip, ip);
-    ip = strstr(their_calling_ip, " ");
+    ip = strstr(their_sending_ip, " ");
     *ip = '\0';
 
     strcpy(fileinfo, port);
@@ -1139,6 +1144,7 @@ void command_fsend_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
     strcpy(filename, fname);
     fname = strstr(filename, " "),
     *fname = '\0';
+    
 
     filesize = atol(fsize);
 
@@ -1164,11 +1170,15 @@ void command_fcancel_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
 
     char message[BUFFER];
 
+    semaphore_bw(writer, readers);
+
     /*Receive message*/
     strcpy(message, target_array[prefix+2]+sizeof(char));
 
     if(strlen(message) != strlen(PCLOSE_CMD_STR)){
         interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        end_transfer();
         return;
     }
 
@@ -1180,5 +1190,7 @@ void command_fcancel_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
     }
 
     end_transfer();
+
+    semaphore_aw(writer, readers);
 
 }
