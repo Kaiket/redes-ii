@@ -95,6 +95,15 @@ int writer;                   /*Semaphore*/
 int mutex_access;             /*Semaphore*/
 int mutex_rvariables;         /*Semaphore*/
 
+/*File sending*/
+char tosend_nick[BUFFER];     /*Nick of the user who has been sent to*/
+char fromsend_nick[BUFFER];   /*Nick of the user who has sent*/
+char my_sending_ip[BUFFER];   /*My ip for sending*/
+char their_sending_ip[BUFFER];/*Their ip for sending*/
+char filename[BUFFER];        /*File name*/
+long filesize;                /*File size*/
+u_int16_t their_sending_port; /*Their port for sending*/
+
 /*SSL*/
 SSL* ssl;                     /*SSL*/
 

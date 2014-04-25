@@ -226,5 +226,23 @@ void command_paccept_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
 void command_pclose_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick);
 
 
+/*Sending commands*/
+/*
+ * This functions are use to manage the behaviour of the program when received a
+ * FSEND / FACCEPT / FCANCEL command.
+ */
+int command_fsend_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings);
+int command_faccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings);
+int command_fcancel_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings);
+
+/*
+ * This functions are use to manage the behaviour of the program when sent a
+ * FSEND / FACCEPT / FCANCEL command.
+ */
+void command_fsend_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick);
+void command_faccept_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick);
+void command_fcancel_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick);
+
+
 
 #endif

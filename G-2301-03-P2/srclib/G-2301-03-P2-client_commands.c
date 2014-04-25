@@ -49,7 +49,7 @@ void command_join_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
     if (n_strings-prefix == 2){
 
         /*Checking for colon*/
-        if(*(target_array[prefix+1]) == ":"){
+        if(*(target_array[prefix+1]) == ':'){
             colon = sizeof(char);
         }
 

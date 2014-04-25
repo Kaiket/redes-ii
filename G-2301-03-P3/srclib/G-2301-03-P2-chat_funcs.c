@@ -39,6 +39,16 @@ extern int writer;                   /*Semaphore*/
 extern int mutex_access;             /*Semaphore*/
 extern int mutex_rvariables;         /*Semaphore*/
 
+/*File sending*/
+extern char tosend_nick[BUFFER];     /*Nick of the user who has been sent to*/
+extern char fromsend_nick[BUFFER];   /*Nick of the user who has sent*/
+extern char my_sending_ip[BUFFER];   /*My ip for sending*/
+extern char their_sending_ip[BUFFER];/*Their ip for sending*/
+extern char filename[BUFFER];        /*File name*/
+extern long filesize;                /*File size*/
+extern u_int16_t their_sending_port; /*Their port for sending*/
+
+
 /*SSL*/
 extern SSL* ssl;
 

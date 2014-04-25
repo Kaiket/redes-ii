@@ -40,6 +40,16 @@ extern int writer;                   /*Semaphore*/
 extern int mutex_access;             /*Semaphore*/
 extern int mutex_rvariables;         /*Semaphore*/
 
+/*File sending*/
+extern char tosend_nick[BUFFER];     /*Nick of the user who has been sent to*/
+extern char fromsend_nick[BUFFER];   /*Nick of the user who has sent*/
+extern char my_sending_ip[BUFFER];   /*My ip for sending*/
+extern char their_sending_ip[BUFFER];/*Their ip for sending*/
+extern char filename[BUFFER];        /*File name*/
+extern long filesize;                /*File size*/
+extern u_int16_t their_sending_port; /*Their port for sending*/
+
+
 /*SSL*/
 extern SSL* ssl;
 
@@ -55,7 +65,7 @@ void command_join_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_str
     if (n_strings-prefix == 2){
 
         /*Checking for colon*/
-        if(*(target_array[prefix+1]) == ":"){
+        if(*(target_array[prefix+1]) == ':'){
             colon = sizeof(char);
         }
 
@@ -304,6 +314,15 @@ void command_privmsg_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_
                 }
                 else if(!strncasecmp(message, PCLOSE_CMD_STR, strlen(PCLOSE_CMD_STR))){
                     command_pclose_in((char **) target_array, prefix, n_strings, recv_nick);
+                }
+                else if(!strncasecmp(message, FSEND_CMD_STR, strlen(FSEND_CMD_STR))){
+                    command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
+                }
+                else if(!strncasecmp(message, FACCEPT_CMD_STR, strlen(FACCEPT_CMD_STR))){
+                    command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
+                }
+                else if(!strncasecmp(message, FCANCEL_CMD_STR, strlen(FCANCEL_CMD_STR))){
+                    command_paccept_in((char **) target_array, prefix, n_strings, recv_nick);
                 }
                 else{
                     interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
@@ -646,6 +665,12 @@ void command_exit_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_st
 }
 
 
+/*
+ *
+ * Calling functions.
+ *
+ */
+
 int command_pcall_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
 
 	char message[BUFFER];
@@ -922,5 +947,237 @@ void command_pclose_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_s
     interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
 
     end_call();
+
+}
+
+
+/*
+ *
+ * Sending functions.
+ *
+ */
+
+
+int command_fsend_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
+    
+    FILE *fp = NULL;
+    long file_size;
+    char message[BUFFER];
+    long my_sending_port;
+
+    /*Checking parameters*/
+    if(n_strings-prefix < 3){
+        return ERROR;
+    }
+
+    /*Avoid rejection due to timeout*/
+    if(already_transfering() && is_finished_transfer()){
+        end_transfer();
+    }
+
+    /*Getting file size*/
+    fp = fopen(target_array[prefix+2], "r");
+    if(!fp){
+        interfaceErrorWindow("Error de acceso al fichero, compruebe su existencia.", MAIN_THREAD);
+        return OK;
+    }
+
+    if(fseek(fp, 0, SEEK_END) != 0){
+        interfaceErrorWindow("Error de acceso al fichero, compruebe su existencia.", MAIN_THREAD);
+        return OK;
+    }
+
+    file_size = ftell(fp);
+    fclose(fp);
+
+    semaphore_bw(writer, readers);
+
+    /*Get IP*/
+    if(get_own_ip(sfd, my_sending_ip) == ERROR){
+        end_transfer();
+        semaphore_aw(writer, readers);
+        interfaceErrorWindow("Error al obtener la IP local.", MAIN_THREAD);
+        return OK;
+    }
+
+    /*Getting port*/
+    my_sending_port = transfer(my_sending_ip, 0, SENDER_SIZE, target_array[prefix+2], file_size);
+    if(my_sending_port == ERROR_ALREADY_TRANSFERING){
+        interfaceText(NULL, "Debe terminarse el envío actual.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        return OK;
+    }
+    else if(my_sending_port <= 0){
+        interfaceText(NULL, "Error durante el establecimiento de la comunicación.", ERROR_TEXT, MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        return OK;
+    }
+
+    /*Storing nick*/
+    strcpy(tosend_nick, target_array[prefix+1]);
+
+    /*Message*/
+    sprintf(message, "%s :%s %s %ld %s %ld", tosend_nick, FSEND_CMD_STR, my_sending_ip, my_sending_port, target_array[prefix+2], file_size);
+    if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
+        interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        return OK;
+    }
+
+    semaphore_aw(writer, readers);
+    interfaceText(NULL, "Petición de envío realizada.", MSG_TEXT, MAIN_THREAD);
+    return OK;
+}
+
+int command_faccept_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
+    
+
+    /*Checking parameters*/
+    if(n_strings-prefix < 2){
+        return ERROR;
+    }
+
+    /*Avoid rejection due to timeout*/
+    if(already_transfering() && is_finished_transfer()){
+        end_transfer();
+    }
+
+    semaphore_bw(writer, readers);
+
+    if(strcasecmp(fromsend_nick, target_array[prefix+1])){
+        interfaceText(NULL, "Ha de aceptar una petición del último usuario que la envió", MSG_TEXT, MAIN_THREAD);
+        return OK;
+    }
+
+    if(!transfer(their_sending_ip, their_sending_port, RECEIVER_SIDE, filename, filesize)){
+        interfaceText(NULL, "Error de recepcion.", MSG_TEXT, MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        return OK;
+    }
+    else{
+        interfaceText(NULL, "Recepción.", MSG_TEXT, MAIN_THREAD);
+    }
+
+    semaphore_aw(writer, readers);
+    
+
+    return OK;
+}
+
+int command_fcancel_out(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings){
+
+    char message[BUFFER];
+
+    /*Checking parameters*/
+    if(n_strings-prefix < 1){
+        return ERROR;
+    }
+
+    end_transfer();
+
+    interfaceText(NULL, "Conexión cerrada.", MSG_TEXT, MAIN_THREAD);
+
+    sprintf(message, "%s :Conexión cerrada", tosend_nick);
+
+    semaphore_bw(writer, readers);
+    if(client_send_irc_command(PRIVMSG_CMD_STR, message) == ERROR){
+        interfaceErrorWindow("Error al enviar el mensaje. Inténtelo de nuevo.", MAIN_THREAD);
+        semaphore_aw(writer, readers);
+        return OK;
+    }
+
+
+    return OK;
+}
+
+void command_fsend_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick){
+
+    char message[BUFFER];
+    char fileinfo[BUFFER];
+    char *ip, *port, *fname, *fsize;
+
+    /*Receive message*/
+    strcpy(message, target_array[prefix+2]+sizeof(char));
+
+    ip = strstr(message, " ")+sizeof(char);
+    if(!ip){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    port = strstr(ip, " ")+sizeof(char);
+    if(!port){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    fname = strstr(port, " ")+sizeof(char);
+    if(!fname){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    fsize = strstr(fname, " ")+sizeof(char);
+    if(!fsize){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    semaphore_bw(writer, readers);
+    strcpy(fromsend_nick, recv_nick);
+
+    strcpy(their_sending_ip, ip);
+    ip = strstr(their_calling_ip, " ");
+    *ip = '\0';
+
+    strcpy(fileinfo, port);
+    port = strstr(fileinfo, " ");
+    *port = '\0';
+    their_sending_port = atol(fileinfo);
+
+    strcpy(filename, fname);
+    fname = strstr(filename, " "),
+    *fname = '\0';
+
+    filesize = atol(fsize);
+
+    sprintf(message, "Recibida petición de envío del fichero '%s' del usuario %s.", filename, recv_nick);
+    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+    sprintf(message, "Para contestar: /FACCEPT %s", recv_nick);
+    interfaceText(NULL, message, MSG_TEXT, !MAIN_THREAD);
+
+    semaphore_aw(writer, readers);
+
+
+}
+
+void command_faccept_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick){
+
+    if(!strcasecmp(recv_nick, tosend_nick)){
+        interfaceText(NULL, "Aceptado fichero.", MSG_TEXT, !MAIN_THREAD);
+    }
+
+}
+
+void command_fcancel_in(char *target_array[MAX_CMD_ARGS + 2], int prefix, int n_strings, char *recv_nick){
+
+    char message[BUFFER];
+
+    /*Receive message*/
+    strcpy(message, target_array[prefix+2]+sizeof(char));
+
+    if(strlen(message) != strlen(PCLOSE_CMD_STR)){
+        interfaceText(recv_nick, message, PRIVATE_TEXT, !MAIN_THREAD);
+        return;
+    }
+
+    if(!strcasecmp(recv_nick, tosend_nick)){
+        interfaceText(NULL, "Conexión cerrada.", MSG_TEXT, !MAIN_THREAD);
+    }
+    else if(!strcasecmp(recv_nick, fromsend_nick)){
+        interfaceText(NULL, "Conexión cerrada.", MSG_TEXT, !MAIN_THREAD);
+    }
+
+    end_transfer();
 
 }

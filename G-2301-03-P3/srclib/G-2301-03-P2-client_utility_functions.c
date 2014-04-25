@@ -41,6 +41,15 @@ extern int writer;                   /*Semaphore*/
 extern int mutex_access;             /*Semaphore*/
 extern int mutex_rvariables;         /*Semaphore*/
 
+/*File sending*/
+extern char tosend_nick[BUFFER];     /*Nick of the user who has been sent to*/
+extern char fromsend_nick[BUFFER];   /*Nick of the user who has sent*/
+extern char my_sending_ip[BUFFER];   /*My ip for sending*/
+extern char their_sending_ip[BUFFER];/*Their ip for sending*/
+extern char filename[BUFFER];        /*File name*/
+extern long filesize;                /*File size*/
+extern u_int16_t their_sending_port; /*Their port for sending*/
+
 /*SSL*/
 extern SSL* ssl;
 
@@ -409,6 +418,27 @@ void client_cmd_parsing(char *string, int type){
             else if(!strcasecmp(command, PCLOSE_CMD_STR)){
                 if(command_pclose_out((char **) target_array, prefix, n_strings) == ERROR){
                     interfaceText(NULL, "Uso: /PCLOSE nick", ERROR_TEXT, MAIN_THREAD);
+                }
+                break;
+            }
+
+            else if(!strcasecmp(command, FSEND_CMD_STR)){
+                if(command_fsend_out((char **) target_array, prefix, n_strings) == ERROR){
+                    interfaceText(NULL, "Uso: /FSEND nick filename", ERROR_TEXT, MAIN_THREAD);
+                }
+                break;
+            }
+
+            else if(!strcasecmp(command, FACCEPT_CMD_STR)){
+                if(command_faccept_out((char **) target_array, prefix, n_strings) == ERROR){
+                    interfaceText(NULL, "Uso: /FACCEPT nick", ERROR_TEXT, MAIN_THREAD);
+                }
+                break;
+            }
+
+            else if(!strcasecmp(command, FCANCEL_CMD_STR)){
+                if(command_fcancel_out((char **) target_array, prefix, n_strings) == ERROR){
+                    interfaceText(NULL, "Uso: /FCANCEL nick", ERROR_TEXT, MAIN_THREAD);
                 }
                 break;
             }
